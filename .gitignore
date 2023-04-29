@@ -1,0 +1,4 @@
+*.o
+*.hi
+lab5_eval_monad.hs
+lab6_eval_monad.hs
