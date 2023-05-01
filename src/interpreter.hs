@@ -2,7 +2,17 @@ import Data.Map
 
 import Control.Monad.Reader
 import Control.Monad.Except
+import Control.Monad.State
 import Control.Monad.Identity
+
+-- Grammar files import
+import AbsHint
+import ErrM
+import PrintHint
+import SkelHint
+--import TestHint
+
+import Types
 
 
 
@@ -10,46 +20,38 @@ import Control.Monad.Identity
 
 
 -- powstałe z BNFC data Abstract Syntax Tree:
-data Expr =
-    EVar String
-  | EInt Int
-  | EAdd Expr Expr
-  | ELet String Expr Expr
+--data Expr =
+--    EVar String
+--  | EInt Int
+--  | EAdd Expr Expr
+--  | ELet String Expr Expr
   
 
-data Inst =
-    EAs String Expr
-  | EIf Expr Inst Inst
+--data Inst =
+--    EAs String Expr
+--  | EIf Expr Inst Inst
 
-data Program =
-    Prog [Inst]
-
-type Var = String
-
-type Env = Map Var Int
-
-type Err = String
-
+--data Program =
+--    Prog [Inst]
 
 -- monada zaprojektowana do obliczania wyrażeń
--- EvalMonad a === Env -> (Either Err a)
-type EvalMonad a = (ReaderT Env (ExceptT Err Identity)) a
+-- EvalControl a === Env -> (Either Err a)
+type EvalControl a = (ReaderT Env (ExceptT Err ( StateT Store (Identity)))) a
 
 
-runEvalMonad :: (EvalMonad a) -> Env -> Either Err a
-runEvalMonad v r = runIdentity (runExceptT (runReaderT v r))
+runEvalControl :: (EvalControl a) -> Env  -> Store -> Either Err a
+runEvalControl v r store = runIdentity (runStateT (runExceptT (runReaderT v r)) store)
 
 
-eval :: Expr -> EvalMonad Int
+eval :: Expr -> EvalControl Int
 
 eval (EVar x) = do {
-  r <- ask; -- ask zwraca (EvalMonad Env) które rozpakowujemy do r :: Env
+  r <- ask; -- ask zwraca (EvalControl Env) które rozpakowujemy do r :: Env
   if member x r then
     return (r ! x)        -- (r ! x) :: Int
   else
     throwError ("Unknown variable " ++ x ++ " at some place!")
 }
-
 
 eval (EInt i) = do
   return i
@@ -68,7 +70,7 @@ eval (ELet x e e1) = do
 -- uruchom eval na danym Expr w pustym srodowisku
 runEval :: Expr -> Either Err Int
 
-runEval e = runEvalMonad (eval e) empty
+runEval e = runEvalControl (eval e) empty
 
 
 err1 = runEval (ELet "x" (EInt 5) (EAdd (EVar "y") (EInt 7)))
