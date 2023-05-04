@@ -30,41 +30,63 @@ runMain :: Program -> EvalControl ()
 runMain (Program _ topDefs) = do
     let mainFunc = head $ filter isMain topDefs
     env <- ask
-    store <- get
-    evalFunction mainFunc env store
+    evalFunction mainFunc env
 
 isMain :: TopDef -> Bool
 isMain (FnDef _ _ (Ident "main") _ _) = True
 isMain _ = False
 
 -- Evaluating function definition
-evalFunction :: TopDef -> Env -> Store -> EvalControl ()
-evalFunction (FnDef _ _ _ args block) env store = do
+evalFunction :: TopDef -> Env -> EvalControl ()
+evalFunction (FnDef _ _ _ args block) env = do
     let argNames    = map (\(Arg _ _ (Ident name)) -> name) args                -- ? 
     let argValues   = map (const (VInt 0)) args                                 -- ?
     let newEnv      = Map.fromList (zip argNames argValues) `Map.union` env     -- ?
-    local (\ _ -> newEnv) (evalBlock block store)
+    local (\ _ -> newEnv) (evalBlock block)
 
 -- Evaluating block of statements
-evalBlock :: Block -> Store -> EvalControl ()
-evalBlock (Block _ stmts) store = do
-  -- Evaluate the statements in the block
-  let evalStmts = map evalStmt stmts
-  results <- sequence evalStmts
-  -- Return the value of the last statement
-  case results of
-    [] -> return ()
-    _ -> return (last results)
+evalBlock :: Block -> EvalControl ()
+evalBlock (Block _ stmts) = do
+    let evalStmts = map evalStmt stmts
+    results <- sequence evalStmts
+    case results of   -- Return the value of the last statement
+        [] -> return ()
+        _ -> return (last results)
 
 -- Evaluating single statement
 evalStmt :: Stmt -> EvalControl ()
-evalStmt (Print _ exp) = do
-    v <- evalExpr exp
+evalStmt (Print _ e) = do
+    v <- evalExpr e
     liftIO $ putStrLn (show v)
 
-evalStmt _ = return ()  -- TODO?
+evalStmt (Cond _ e block) = do
+    VBool b <- evalExpr e
+    if b == True
+        then evalBlock block
+        else return ()
+
+evalStmt (CondElse _ e blockT blockF) = do
+    VBool b <- evalExpr e
+    if b == True
+        then evalBlock blockT
+        else evalBlock blockF
+
+evalStmt (While a e block) = do --TOTEST
+    VBool b <- evalExpr e
+    if b == True
+        then evalBlock block >> evalStmt (While a e block)
+        else return ()
+
+evalStmt (SExp _ e) = do
+    evalExpr e >> return ()
+
+evalStmt (Empty _) = return ()
+
+evalStmt (VRet _) = return ()
 
 
+
+-- Extra functions for evaluating logical and mathematical expressions
 operationAdd (Plus _)   e1 e2 = e1 + e2
 operationAdd (Minus _)  e1 e2 = e1 - e2
 
@@ -72,15 +94,15 @@ operationMul (Times _)  e1 e2 = e1 * e2
 operationMul (Div _)    e1 e2 = div e1 e2
 operationMul (Mod _)    e1 e2 = e1 `mod` e2
 
-comparasionL (LTH _)    e1 e2 = e1 <  e1
-comparasionL (LE _)     e1 e2 = e1 <= e1
-comparasionL (GTH _)    e1 e2 = e1 >  e1
-comparasionL (GE _)     e1 e2 = e1 >= e1
-comparasionL (EQU _)    e1 e2 = e1 == e1
-comparasionL (NE _)     e1 e2 = e1 /= e1
+comparasionL (LTH _)    e1 e2 = e1 <  e2
+comparasionL (LE _)     e1 e2 = e1 <= e2
+comparasionL (GTH _)    e1 e2 = e1 >  e2
+comparasionL (GE _)     e1 e2 = e1 >= e2
+comparasionL (EQU _)    e1 e2 = e1 == e2
+comparasionL (NE _)     e1 e2 = e1 /= e2
 
 
--- Evaluating expression
+-- Evaluating expression logic
 evalExpr :: Expr -> EvalControl HintValue
 
 -- Math expressions
@@ -104,10 +126,20 @@ evalExpr (EMul _ e1 op e2) = do
                     then throwError modZeroError
                     else return $ VInt (operationMul op v1 v2)
 
+evalExpr (Neg _ e) = do
+    VInt v <- evalExpr e
+    return $ VInt $ -v
+
 -- Logical expressions
+evalExpr (ELitTrue _) = do
+    return (VBool (True))
+
+evalExpr (ELitFalse _) = do
+    return (VBool (False))
+
 evalExpr (ERel _ e1 rel e2) = do
-    VBool b1 <- evalExpr e1
-    VBool b2 <- evalExpr e2
+    b1 <- evalExpr e1
+    b2 <- evalExpr e2
     return $ VBool (comparasionL rel b1 b2)
 
 evalExpr (EAnd _ e1 e2) = do
@@ -120,4 +152,16 @@ evalExpr (EOr _ e1 e2) = do
     VBool b2 <- evalExpr e2
     return $ VBool (b1 || b2)
 
-  
+evalExpr (Not _ e) = do
+    VBool b <- evalExpr e
+    return $ VBool $ not b
+
+-- String expression
+evalExpr (EString _ s) = do
+    return (VString (s))
+
+-- Array & Tuple expressions
+
+-- Variable expressions
+
+-- EApp expressions
