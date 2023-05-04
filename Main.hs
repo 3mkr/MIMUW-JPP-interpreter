@@ -21,7 +21,7 @@ main = do
         [inputFile] -> workWithFile [inputFile]
         _           -> noInput
 
-workWithFile :: [FilePath] -> IO()
+workWithFile :: [FilePath] -> IO ()
 workWithFile inputFile = do
     input <- readFile $ head inputFile
     case pProgram $ myLexer input of
@@ -31,12 +31,14 @@ workWithFile inputFile = do
         Right tree -> do
             --runTypeCheck
             result <- runEval tree
-            case result of
+            return ()
+        {-    case result of
                 Left err -> do
                     hPutStrLn stderr $ "Runtime Error: " ++ err
                     exitFailure
                 Right _ -> do
                     return ()
+        -}
             --putStrLn $ "Jest git: " ++ show tree
 
 

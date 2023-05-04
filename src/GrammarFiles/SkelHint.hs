@@ -78,7 +78,6 @@ transExpr x = case x of
   AbsHint.ELitInt _ integer -> failure x
   AbsHint.ELitTrue _ -> failure x
   AbsHint.ELitFalse _ -> failure x
-  AbsHint.ELitWInt _ integer -> failure x
   AbsHint.EApp _ ident exprs -> failure x
   AbsHint.EString _ string -> failure x
   AbsHint.Neg _ expr -> failure x

@@ -101,7 +101,6 @@ All other symbols are terminals.
   |  |  **|**  | //Integer//
   |  |  **|**  | ``true``
   |  |  **|**  | ``false``
-  |  |  **|**  | //Integer//
   |  |  **|**  | //Ident// ``(`` //[Expr]// ``)``
   |  |  **|**  | //String//
   |  |  **|**  | ``(`` //Expr// ``)``
