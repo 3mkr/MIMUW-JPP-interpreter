@@ -26,12 +26,17 @@ workWithFile inputFile = do
     input <- readFile $ head inputFile
     case pProgram $ myLexer input of
         Left err -> do
-            hPutStrLn stderr $ "Error: " ++ err
+            hPutStrLn stderr $ "Parsing Error: " ++ err
             exitFailure
         Right tree -> do
-            let Program p = tree
             --runTypeCheck
-            result <- runEval p
+            result <- runEval tree
+            case result of
+                Left err -> do
+                    hPutStrLn stderr $ "Runtime Error: " ++ err
+                    exitFailure
+                Right _ -> do
+                    return ()
             --putStrLn $ "Jest git: " ++ show tree
 
 
