@@ -170,7 +170,6 @@ Expr6
   | Integer { (fst $1, AbsHint.ELitInt (fst $1) (snd $1)) }
   | 'true' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.ELitTrue (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }
   | 'false' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.ELitFalse (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }
-  | Integer { (fst $1, AbsHint.ELitWInt (fst $1) (snd $1)) }
   | Ident '(' ListExpr ')' { (fst $1, AbsHint.EApp (fst $1) (snd $1) (snd $3)) }
   | String { (fst $1, AbsHint.EString (fst $1) (snd $1)) }
   | '(' Expr ')' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), (snd $2)) }

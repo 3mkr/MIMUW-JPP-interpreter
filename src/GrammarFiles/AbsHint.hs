@@ -78,7 +78,6 @@ data Expr' a
     | ELitInt a Integer
     | ELitTrue a
     | ELitFalse a
-    | ELitWInt a Integer
     | EApp a Ident [Expr' a]
     | EString a String
     | Neg a (Expr' a)
@@ -179,7 +178,6 @@ instance HasPosition Expr where
     ELitInt p _ -> p
     ELitTrue p -> p
     ELitFalse p -> p
-    ELitWInt p _ -> p
     EApp p _ _ -> p
     EString p _ -> p
     Neg p _ -> p

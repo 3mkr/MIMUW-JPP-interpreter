@@ -223,7 +223,6 @@ instance Print (AbsHint.Expr' a) where
     AbsHint.ELitInt _ n -> prPrec i 6 (concatD [prt 0 n])
     AbsHint.ELitTrue _ -> prPrec i 6 (concatD [doc (showString "true")])
     AbsHint.ELitFalse _ -> prPrec i 6 (concatD [doc (showString "false")])
-    AbsHint.ELitWInt _ n -> prPrec i 6 (concatD [prt 0 n])
     AbsHint.EApp _ id_ exprs -> prPrec i 6 (concatD [prt 0 id_, doc (showString "("), prt 0 exprs, doc (showString ")")])
     AbsHint.EString _ str -> prPrec i 6 (concatD [printString str])
     AbsHint.Neg _ expr -> prPrec i 5 (concatD [doc (showString "-"), prt 6 expr])

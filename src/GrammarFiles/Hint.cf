@@ -90,8 +90,6 @@ ELitTrue. 	Expr6 ::= "true" ;
 
 ELitFalse. 	Expr6 ::= "false" ;
 
-ELitWInt.	Expr6 ::= Integer;
-
 EApp.      	Expr6 ::= Ident "(" [Expr] ")" ;
 
 EString.   	Expr6 ::= String ;
