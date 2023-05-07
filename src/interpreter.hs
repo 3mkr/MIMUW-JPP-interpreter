@@ -31,6 +31,8 @@ runMain (Program _ topDefs) = do
     let mainFunc = head $ filter isMain topDefs
     env <- ask
     evalFunction mainFunc env
+    --store <- get                      -- TODEL
+    --liftIO $ putStrLn (show store)    -- TODEL
 
 isMain :: TopDef -> Bool
 isMain (FnDef _ _ (Ident "main") _ _) = True
@@ -39,10 +41,17 @@ isMain _ = False
 -- Evaluating function definition
 evalFunction :: TopDef -> Env -> EvalControl ()
 evalFunction (FnDef _ _ _ args block) env = do
-    let argNames    = map (\(Arg _ _ (Ident name)) -> name) args                -- ? 
-    let argValues   = map (const (VInt 0)) args                                 -- ?
-    let newEnv      = Map.fromList (zip argNames argValues) `Map.union` env     -- ?
+    store <- get
+    let newAddr = Map.size store
+    --let newEnv = Map.insert x newAddr env
+    --put $ Map.insert newAddr v store
+    let argNames    = map (\(Arg _ _ (Ident name)) -> name) args
+    let mapSize     = length argNames
+    let newAddrs    = [newAddr..newAddr+mapSize] 
+    --let argValues   = map (const (\ x -> x)) args                                 -- ?
+    let newEnv      = Map.fromList (zip argNames newAddrs) `Map.union` env     -- ?
     local (\ _ -> newEnv) (evalBlock block)
+    --evalBlock block
 
 -- Evaluating block of statements
 evalBlock :: Block -> EvalControl ()
@@ -77,6 +86,10 @@ evalStmt (While a e block) = do --TOTEST
         then evalBlock block >> evalStmt (While a e block)
         else return ()
 
+evalStmt (Incr _ (Ident x)) = changeVIntVar x (+) (1)
+
+evalStmt (Decr _ (Ident x)) = changeVIntVar x (-) (1)
+
 evalStmt (SExp _ e) = do
     evalExpr e >> return ()
 
@@ -84,6 +97,43 @@ evalStmt (Empty _) = return ()
 
 evalStmt (VRet _) = return ()
 
+evalStmt (Decl _ _ items) = do
+    evalDeclare items
+    return ()
+
+changeVIntVar :: String -> (Int -> Int -> Int) -> Int -> EvalControl ()
+changeVIntVar x op change = do
+    env <- ask
+    store <- get
+    case Map.lookup x env of
+        Nothing -> throwError $ unknownVarError
+        Just addr -> case Map.lookup addr store of
+            Nothing -> throwError $ unknownVarError
+            Just val -> do
+                let updatedVal = case val of
+                                VInt i -> VInt (op i change)
+                                _ -> error "Expected VInt"
+                modify $ Map.insert addr updatedVal
+
+evalDeclare :: [Item] -> EvalControl ()
+evalDeclare [] = return ()
+evalDeclare (i : []) = evalSingleDecl i
+evalDeclare (i : is) = do 
+    evalSingleDecl i 
+    evalDeclare is
+
+evalSingleDecl :: Item -> EvalControl ()
+evalSingleDecl (Init _ (Ident x) e) = do
+    env <- ask
+    store <- get
+    v <- evalExpr e
+    case Map.lookup x env of    
+        Just addr -> put $ Map.insert addr v store  -- We already have variable with that name
+        Nothing -> do
+            let newAddr = Map.size store
+            let newEnv = Map.insert x newAddr env
+            put $ Map.insert newAddr v store
+            local (const newEnv) $ return ()
 
 
 -- Extra functions for evaluating logical and mathematical expressions
@@ -163,5 +213,26 @@ evalExpr (EString _ s) = do
 -- Array & Tuple expressions
 
 -- Variable expressions
+{-
+evalExpr (EVar _ (Ident x)) = do
+    r <- ask
+    if Map.member x r
+        then do --return $ VInt $ (r Map.! x)
+            address <- r Map.! x
+            s <- get
+            if Map.member address s
+                then return (s Map.! address)
+                else throwError (noValError ++ show x)
+        else throwError (unknownVarError ++ show x)
+-}
+evalExpr (EVar _ (Ident x)) = do
+    env <- ask
+    store <- get
+    case Map.lookup x env of
+        Just addr -> case Map.lookup addr store of
+            Just val -> return val
+            Nothing -> return $ VInt $ -8--throwError noValError
+        Nothing -> return $ VInt $ 8 --throwError unknownVarError
+
 
 -- EApp expressions
