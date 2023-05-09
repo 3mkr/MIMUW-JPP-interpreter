@@ -31,14 +31,14 @@ workWithFile inputFile = do
         Right tree -> do
             --runTypeCheck
             result <- runEval tree
-            return ()
-        {-    case result of
-                Left err -> do
+            case result of
+                (Left err, _) -> do
                     hPutStrLn stderr $ "Runtime Error: " ++ err
                     exitFailure
-                Right _ -> do
+                (Right _, store) -> do
+                    putStrLn (show store)       -- TODEL
                     return ()
-        -}
+        
             --putStrLn $ "Jest git: " ++ show tree
 
 

@@ -25,81 +25,147 @@ runEval prog = runEvalControl prog Map.empty Map.empty
 runEvalControl :: Program -> Env -> Store -> IO (Either RuntimeErr (), Store)
 runEvalControl prog env store = runStateT (runExceptT (runReaderT (runMain prog) env)) store
 
--- Finding mian() and running it
+-- Finding main() and running it
 runMain :: Program -> EvalControl ()
 runMain (Program _ topDefs) = do
     let mainFunc = head $ filter isMain topDefs
     env <- ask
     evalFunction mainFunc env
-    --store <- get                      -- TODEL
-    --liftIO $ putStrLn (show store)    -- TODEL
+    return ()
 
 isMain :: TopDef -> Bool
 isMain (FnDef _ _ (Ident "main") _ _) = True
 isMain _ = False
 
 -- Evaluating function definition
-evalFunction :: TopDef -> Env -> EvalControl ()
+evalFunction :: TopDef -> Env -> EvalControl (Maybe HintValue)
 evalFunction (FnDef _ _ _ args block) env = do
     store <- get
-    let newAddr = Map.size store
-    --let newEnv = Map.insert x newAddr env
-    --put $ Map.insert newAddr v store
+    let newAddr     = Map.size store
     let argNames    = map (\(Arg _ _ (Ident name)) -> name) args
     let mapSize     = length argNames
     let newAddrs    = [newAddr..newAddr+mapSize] 
-    --let argValues   = map (const (\ x -> x)) args                                 -- ?
-    let newEnv      = Map.fromList (zip argNames newAddrs) `Map.union` env     -- ?
-    local (\ _ -> newEnv) (evalBlock block)
-    --evalBlock block
+    let newEnv      = Map.fromList (zip argNames newAddrs) `Map.union` env     -- add argValues?
+    result <- local (\ _ -> newEnv) (evalBlock block)
+    return result
 
 -- Evaluating block of statements
-evalBlock :: Block -> EvalControl ()
+evalBlock :: Block -> EvalControl (Maybe HintValue)
 evalBlock (Block _ stmts) = do
-    let evalStmts = map evalStmt stmts
-    results <- sequence evalStmts
-    case results of   -- Return the value of the last statement
-        [] -> return ()
-        _ -> return (last results)
+    results <- evalBlockOfStmts stmts
+    case results of
+        Nothing -> return Nothing
+        Just (ReturnVal v) -> return $ Just $ v
+
+evalBlockOfStmts :: [Stmt] -> EvalControl (Maybe StmtOutput)
+evalBlockOfStmts [] = return Nothing
+evalBlockOfStmts (s : ss) = do
+    result <- evalStmt s
+    case result of
+        Just (Environment newEnv) -> local (const newEnv) $ evalBlockOfStmts ss
+        Just v -> return $ Just v
+        Nothing -> evalBlockOfStmts ss
 
 -- Evaluating single statement
-evalStmt :: Stmt -> EvalControl ()
+evalStmt :: Stmt -> EvalControl (Maybe StmtOutput)
+-- Print Statements
 evalStmt (Print _ e) = do
     v <- evalExpr e
     liftIO $ putStrLn (show v)
+    return Nothing
 
+--evalStmt (Printf _ e1 e2 e3 msg) = do
+
+
+-- If Statements
 evalStmt (Cond _ e block) = do
     VBool b <- evalExpr e
     if b == True
-        then evalBlock block
-        else return ()
+        then do
+            evalBlock block
+            return Nothing
+        else return Nothing
 
 evalStmt (CondElse _ e blockT blockF) = do
     VBool b <- evalExpr e
     if b == True
         then evalBlock blockT
         else evalBlock blockF
+    return Nothing
 
-evalStmt (While a e block) = do --TOTEST
+-- Loop Statements
+evalStmt (While a e block) = do
     VBool b <- evalExpr e
     if b == True
-        then evalBlock block >> evalStmt (While a e block)
-        else return ()
+        then do
+            evalBlock block
+            evalStmt (While a e block)
+            return Nothing
+        else return Nothing
 
-evalStmt (Incr _ (Ident x)) = changeVIntVar x (+) (1)
+evalStmt (For _ x e1 e2 block) = do
+    v1 <- evalExpr e1
+    v2 <- evalExpr e2
+    runForLoop x v1 v2 block
+    return Nothing
 
-evalStmt (Decr _ (Ident x)) = changeVIntVar x (-) (1)
+-- ++ and -- operators
+evalStmt (Incr _ (Ident x)) = do
+    changeVIntVar x (+) (1)
+    return Nothing
+
+evalStmt (Decr _ (Ident x)) = do
+    changeVIntVar x (-) (1)
+    return Nothing
+
+-- Return statements
+evalStmt (Ret _ e) = do
+    v <- evalExpr e
+    return $ Just $ ReturnVal v
+
+evalStmt (VRet _) = return Nothing
 
 evalStmt (SExp _ e) = do
-    evalExpr e >> return ()
+    evalExpr e >> return Nothing
 
-evalStmt (Empty _) = return ()
+evalStmt (Empty _) = return Nothing
 
-evalStmt (VRet _) = return ()
-
+-- Variable declarations and assignments
 evalStmt (Decl _ _ items) = do
-    evalDeclare items
+    newEnv <- evalDeclare items
+    return $ Just $ Environment newEnv
+
+evalStmt (Ass _ (Ident x) e) = do
+    env <- ask
+    store <- get
+    v <- evalExpr e
+    case Map.lookup x env of
+        Nothing -> throwError $ unknownVarError ++ x
+        Just addr -> do
+            put $ Map.insert addr v store
+            return Nothing
+
+
+runForLoop :: Ident -> HintValue -> HintValue -> Block -> EvalControl ()
+runForLoop (Ident x) v1 v2 block = do
+    env <- ask
+    store <- get
+    let addr = Map.size store
+    let newEnv = Map.insert x addr env
+    put $ Map.insert addr v1 store
+    local (const newEnv) $ loopHelp x v1 v2 block addr
     return ()
+
+loopHelp :: String -> HintValue -> HintValue -> Block -> Int -> EvalControl ()
+loopHelp x v1 v2 block addr = do
+    case (v1 <= v2) of
+        True -> do
+            evalBlock block
+            store <- get
+            put $ Map.insert addr (vIntAdd v1 1) store 
+            loopHelp x (vIntAdd v1 1) v2 block addr
+            return ()
+        False -> return ()
 
 changeVIntVar :: String -> (Int -> Int -> Int) -> Int -> EvalControl ()
 changeVIntVar x op change = do
@@ -115,26 +181,39 @@ changeVIntVar x op change = do
                                 _ -> error "Expected VInt"
                 modify $ Map.insert addr updatedVal
 
-evalDeclare :: [Item] -> EvalControl ()
-evalDeclare [] = return ()
-evalDeclare (i : []) = evalSingleDecl i
+evalDeclare :: [Item] -> EvalControl Env
+evalDeclare (i : []) = do
+    newEnv <- evalSingleDeclare i
+    return newEnv
 evalDeclare (i : is) = do 
-    evalSingleDecl i 
-    evalDeclare is
+    newEnv <- evalSingleDeclare i 
+    newerEnv <- local (const newEnv) $ evalDeclare is
+    return newerEnv
 
-evalSingleDecl :: Item -> EvalControl ()
-evalSingleDecl (Init _ (Ident x) e) = do
+evalSingleDeclare :: Item -> EvalControl Env
+evalSingleDeclare (Init _ (Ident x) e) = do
     env <- ask
     store <- get
     v <- evalExpr e
     case Map.lookup x env of    
-        Just addr -> put $ Map.insert addr v store  -- We already have variable with that name
+        Just addr -> do
+            put $ Map.insert addr v store  -- We already have variable with that name
+            return env
         Nothing -> do
             let newAddr = Map.size store
             let newEnv = Map.insert x newAddr env
             put $ Map.insert newAddr v store
-            local (const newEnv) $ return ()
+            return newEnv
 
+evalSingleDeclare (NoInit _ (Ident x)) = do
+    env <- ask
+    store <- get
+    case Map.lookup x env of    
+        Just addr -> throwError $ duplicateVarError ++ x
+        Nothing -> do
+            let newAddr = Map.size store
+            let newEnv = Map.insert x newAddr env
+            return newEnv
 
 -- Extra functions for evaluating logical and mathematical expressions
 operationAdd (Plus _)   e1 e2 = e1 + e2
@@ -211,28 +290,46 @@ evalExpr (EString _ s) = do
     return (VString (s))
 
 -- Array & Tuple expressions
+evalExpr (EArr _ es) = do
+    v <- arrayCreator es
+    return (VArr (v))
 
+evalExpr (EArrIdx _ eArr eIdx) = do
+    (VArr arr) <- evalExpr eArr
+    (VInt idx) <- evalExpr eIdx
+    if idx >= 0 && idx < fromIntegral (length arr)
+        then return $ arr !! fromIntegral idx
+        else throwError indexOutOfBounds
+
+evalExpr (ETuple _ es) = do
+    --v <- tupleCreator es
+    v <- arrayCreator es
+    return (VTuple (v))
+    
 -- Variable expressions
-{-
-evalExpr (EVar _ (Ident x)) = do
-    r <- ask
-    if Map.member x r
-        then do --return $ VInt $ (r Map.! x)
-            address <- r Map.! x
-            s <- get
-            if Map.member address s
-                then return (s Map.! address)
-                else throwError (noValError ++ show x)
-        else throwError (unknownVarError ++ show x)
--}
 evalExpr (EVar _ (Ident x)) = do
     env <- ask
     store <- get
     case Map.lookup x env of
         Just addr -> case Map.lookup addr store of
             Just val -> return val
-            Nothing -> return $ VInt $ -8--throwError noValError
-        Nothing -> return $ VInt $ 8 --throwError unknownVarError
+            Nothing -> throwError $ noValError ++ x
+        Nothing -> throwError $ unknownVarError ++ x
 
 
 -- EApp expressions
+
+tupleCreator :: [Expr] -> EvalControl [HintValue]
+tupleCreator es = do
+    vs <- sequence (map evalExpr es)
+    return vs
+
+arrayCreator :: [Expr] -> EvalControl [HintValue]
+arrayCreator (e : []) = do
+    v1 <- evalExpr e
+    return $ [v1]
+arrayCreator (e : es) = do
+    v1 <- evalExpr e
+    vR <- arrayCreator es
+    return $ v1 : vR
+
