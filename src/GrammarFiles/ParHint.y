@@ -44,29 +44,30 @@ import LexHint
   '=='       { PT _ (TS _ 19) }
   '>'        { PT _ (TS _ 20) }
   '>='       { PT _ (TS _ 21) }
-  '['        { PT _ (TS _ 22) }
-  '[]'       { PT _ (TS _ 23) }
-  ']'        { PT _ (TS _ 24) }
-  'boolean'  { PT _ (TS _ 25) }
-  'break'    { PT _ (TS _ 26) }
-  'continue' { PT _ (TS _ 27) }
-  'else'     { PT _ (TS _ 28) }
-  'false'    { PT _ (TS _ 29) }
-  'for'      { PT _ (TS _ 30) }
-  'if'       { PT _ (TS _ 31) }
-  'int'      { PT _ (TS _ 32) }
-  'print'    { PT _ (TS _ 33) }
-  'printf'   { PT _ (TS _ 34) }
-  'return'   { PT _ (TS _ 35) }
-  'string'   { PT _ (TS _ 36) }
-  'to'       { PT _ (TS _ 37) }
-  'true'     { PT _ (TS _ 38) }
-  'tuple'    { PT _ (TS _ 39) }
-  'void'     { PT _ (TS _ 40) }
-  'while'    { PT _ (TS _ 41) }
-  '{'        { PT _ (TS _ 42) }
-  '||'       { PT _ (TS _ 43) }
-  '}'        { PT _ (TS _ 44) }
+  '?'        { PT _ (TS _ 22) }
+  '['        { PT _ (TS _ 23) }
+  '[]'       { PT _ (TS _ 24) }
+  ']'        { PT _ (TS _ 25) }
+  'boolean'  { PT _ (TS _ 26) }
+  'break'    { PT _ (TS _ 27) }
+  'continue' { PT _ (TS _ 28) }
+  'else'     { PT _ (TS _ 29) }
+  'false'    { PT _ (TS _ 30) }
+  'for'      { PT _ (TS _ 31) }
+  'if'       { PT _ (TS _ 32) }
+  'int'      { PT _ (TS _ 33) }
+  'print'    { PT _ (TS _ 34) }
+  'printf'   { PT _ (TS _ 35) }
+  'return'   { PT _ (TS _ 36) }
+  'string'   { PT _ (TS _ 37) }
+  'to'       { PT _ (TS _ 38) }
+  'true'     { PT _ (TS _ 39) }
+  'tuple'    { PT _ (TS _ 40) }
+  'void'     { PT _ (TS _ 41) }
+  'while'    { PT _ (TS _ 42) }
+  '{'        { PT _ (TS _ 43) }
+  '||'       { PT _ (TS _ 44) }
+  '}'        { PT _ (TS _ 45) }
   L_Ident    { PT _ (TV _)    }
   L_integ    { PT _ (TI _)    }
   L_quoted   { PT _ (TL _)    }
@@ -159,14 +160,12 @@ ListType
   | Type { (fst $1, (:[]) (snd $1)) }
   | Type ',' ListType { (fst $1, (:) (snd $1) (snd $3)) }
 
-Expr7 :: { (AbsHint.BNFC'Position, AbsHint.Expr) }
-Expr7
-  : '<' ListExpr '>' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.ETuple (uncurry AbsHint.BNFC'Position (tokenLineCol $1)) (snd $2)) }
-  | '[' ListExpr ']' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.EArr (uncurry AbsHint.BNFC'Position (tokenLineCol $1)) (snd $2)) }
-
 Expr6 :: { (AbsHint.BNFC'Position, AbsHint.Expr) }
 Expr6
-  : Ident { (fst $1, AbsHint.EVar (fst $1) (snd $1)) }
+  : '?' ListExpr '?' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.ETuple (uncurry AbsHint.BNFC'Position (tokenLineCol $1)) (snd $2)) }
+  | '[' ListExpr ']' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.EArr (uncurry AbsHint.BNFC'Position (tokenLineCol $1)) (snd $2)) }
+  | Expr6 '[' Expr ']' { (fst $1, AbsHint.EArrIdx (fst $1) (snd $1) (snd $3)) }
+  | Ident { (fst $1, AbsHint.EVar (fst $1) (snd $1)) }
   | Integer { (fst $1, AbsHint.ELitInt (fst $1) (snd $1)) }
   | 'true' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.ELitTrue (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }
   | 'false' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.ELitFalse (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }

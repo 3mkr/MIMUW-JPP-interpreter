@@ -28,7 +28,7 @@ $u = [. \n]          -- universal: any character
 
 -- Symbols and non-identifier-like reserved words
 
-@rsyms = \( | \) | \, | \{ | \} | \; | \= | \+ \+ | \- \- | \: \= | \< | \> | \[ \] | \[ | \] | \- | \! | \& \& | \| \| | \+ | \* | \/ | \% | \< \= | \> \= | \= \= | \! \=
+@rsyms = \( | \) | \, | \{ | \} | \; | \= | \+ \+ | \- \- | \: \= | \< | \> | \[ \] | \? | \[ | \] | \- | \! | \& \& | \| \| | \+ | \* | \/ | \% | \< \= | \> \= | \= \= | \! \=
 
 :-
 
@@ -161,7 +161,7 @@ eitherResIdent tv s = treeFind resWords
 -- | The keywords and symbols of the language organized as binary search tree.
 resWords :: BTree
 resWords =
-  b "[]" 23
+  b "[" 23
     (b "--" 12
        (b ")" 6
           (b "%" 3 (b "!=" 2 (b "!" 1 N N) N) (b "(" 5 (b "&&" 4 N N) N))
@@ -169,18 +169,20 @@ resWords =
        (b "=" 18
           (b ";" 15
              (b ":=" 14 (b "/" 13 N N) N) (b "<=" 17 (b "<" 16 N N) N))
-          (b ">=" 21 (b ">" 20 (b "==" 19 N N) N) (b "[" 22 N N))))
-    (b "printf" 34
-       (b "false" 29
-          (b "break" 26
-             (b "boolean" 25 (b "]" 24 N N) N)
-             (b "else" 28 (b "continue" 27 N N) N))
-          (b "int" 32 (b "if" 31 (b "for" 30 N N) N) (b "print" 33 N N)))
-       (b "void" 40
-          (b "to" 37
-             (b "string" 36 (b "return" 35 N N) N)
-             (b "tuple" 39 (b "true" 38 N N) N))
-          (b "||" 43 (b "{" 42 (b "while" 41 N N) N) (b "}" 44 N N))))
+          (b ">=" 21 (b ">" 20 (b "==" 19 N N) N) (b "?" 22 N N))))
+    (b "printf" 35
+       (b "else" 29
+          (b "boolean" 26
+             (b "]" 25 (b "[]" 24 N N) N)
+             (b "continue" 28 (b "break" 27 N N) N))
+          (b "if" 32
+             (b "for" 31 (b "false" 30 N N) N)
+             (b "print" 34 (b "int" 33 N N) N)))
+       (b "void" 41
+          (b "to" 38
+             (b "string" 37 (b "return" 36 N N) N)
+             (b "tuple" 40 (b "true" 39 N N) N))
+          (b "||" 44 (b "{" 43 (b "while" 42 N N) N) (b "}" 45 N N))))
   where
   b s n = B bs (TS bs n)
     where

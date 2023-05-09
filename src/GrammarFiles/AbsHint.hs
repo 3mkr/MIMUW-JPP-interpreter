@@ -74,6 +74,7 @@ type Expr = Expr' BNFC'Position
 data Expr' a
     = ETuple a [Expr' a]
     | EArr a [Expr' a]
+    | EArrIdx a (Expr' a) (Expr' a)
     | EVar a Ident
     | ELitInt a Integer
     | ELitTrue a
@@ -174,6 +175,7 @@ instance HasPosition Expr where
   hasPosition = \case
     ETuple p _ -> p
     EArr p _ -> p
+    EArrIdx p _ _ -> p
     EVar p _ -> p
     ELitInt p _ -> p
     ELitTrue p -> p

@@ -74,6 +74,7 @@ transExpr :: Show a => AbsHint.Expr' a -> Result
 transExpr x = case x of
   AbsHint.ETuple _ exprs -> failure x
   AbsHint.EArr _ exprs -> failure x
+  AbsHint.EArrIdx _ expr1 expr2 -> failure x
   AbsHint.EVar _ ident -> failure x
   AbsHint.ELitInt _ integer -> failure x
   AbsHint.ELitTrue _ -> failure x

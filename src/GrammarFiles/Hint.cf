@@ -78,9 +78,11 @@ separator  	Type "," ;
 
 -- Expressions ---------------------------------------------
 
-ETuple.	    Expr7 ::= "<" [Expr] ">";
+ETuple.	    Expr6 ::= "?" [Expr] "?";
 
-EArr.		Expr7 ::= "[" [Expr] "]";
+EArr.		Expr6 ::= "[" [Expr] "]";
+
+EArrIdx.    Expr6 ::= Expr6 "[" Expr "]";
 
 EVar.      	Expr6 ::= Ident ;
 

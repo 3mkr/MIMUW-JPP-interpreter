@@ -217,8 +217,9 @@ instance Print [AbsHint.Type' a] where
 
 instance Print (AbsHint.Expr' a) where
   prt i = \case
-    AbsHint.ETuple _ exprs -> prPrec i 7 (concatD [doc (showString "<"), prt 0 exprs, doc (showString ">")])
-    AbsHint.EArr _ exprs -> prPrec i 7 (concatD [doc (showString "["), prt 0 exprs, doc (showString "]")])
+    AbsHint.ETuple _ exprs -> prPrec i 6 (concatD [doc (showString "?"), prt 0 exprs, doc (showString "?")])
+    AbsHint.EArr _ exprs -> prPrec i 6 (concatD [doc (showString "["), prt 0 exprs, doc (showString "]")])
+    AbsHint.EArrIdx _ expr1 expr2 -> prPrec i 6 (concatD [prt 6 expr1, doc (showString "["), prt 0 expr2, doc (showString "]")])
     AbsHint.EVar _ id_ -> prPrec i 6 (concatD [prt 0 id_])
     AbsHint.ELitInt _ n -> prPrec i 6 (concatD [prt 0 n])
     AbsHint.ELitTrue _ -> prPrec i 6 (concatD [doc (showString "true")])

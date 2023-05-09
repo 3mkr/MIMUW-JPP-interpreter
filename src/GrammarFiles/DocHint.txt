@@ -40,10 +40,10 @@ The symbols used in Hint are the following:
   | ( | ) | , | {
   | } | ; | = | ++
   | -- | := | < | >
-  | [] | [ | ] | -
-  | ! | && | || | +
-  | * | / | % | <=
-  | >= | == | != |
+  | [] | ? | [ | ]
+  | - | ! | && | ||
+  | + | * | / | %
+  | <= | >= | == | !=
 
 ===Comments===
 Single-line comments begin with #, //.Multiple-line comments are  enclosed with /* and */.
@@ -95,9 +95,10 @@ All other symbols are terminals.
   | //[Type]// | -> | **eps**
   |  |  **|**  | //Type//
   |  |  **|**  | //Type// ``,`` //[Type]//
-  | //Expr7// | -> | ``<`` //[Expr]// ``>``
+  | //Expr6// | -> | ``?`` //[Expr]// ``?``
   |  |  **|**  | ``[`` //[Expr]// ``]``
-  | //Expr6// | -> | //Ident//
+  |  |  **|**  | //Expr6// ``[`` //Expr// ``]``
+  |  |  **|**  | //Ident//
   |  |  **|**  | //Integer//
   |  |  **|**  | ``true``
   |  |  **|**  | ``false``
