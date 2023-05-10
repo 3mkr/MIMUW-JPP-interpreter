@@ -15,8 +15,7 @@ import SkelHint
 -- Utils import
 import Types
 import Errors
-
-type EvalControl a = (ReaderT Env (ExceptT RuntimeErr (StateT Store (IO)))) a
+import UtilFunctions
 
 -- Starting monads with proper parameters
 runEval :: Program -> IO (Either RuntimeErr (), Store)
@@ -33,9 +32,7 @@ runMain (Program _ topDefs) = do
     evalFunction mainFunc env
     return ()
 
-isMain :: TopDef -> Bool
-isMain (FnDef _ _ (Ident "main") _ _) = True
-isMain _ = False
+
 
 -- Evaluating function definition
 evalFunction :: TopDef -> Env -> EvalControl (Maybe HintValue)
@@ -45,8 +42,8 @@ evalFunction (FnDef _ _ _ args block) env = do
     let argNames    = map (\(Arg _ _ (Ident name)) -> name) args
     let mapSize     = length argNames
     let newAddrs    = [newAddr..newAddr+mapSize] 
-    let newEnv      = Map.fromList (zip argNames newAddrs) `Map.union` env     -- add argValues?
-    result <- local (\ _ -> newEnv) (evalBlock block)
+    let newEnv      = Map.fromList (zip argNames (map (\x -> (x, False)) newAddrs)) `Map.union` env     -- add argValues?
+    result <- local (const newEnv) (evalBlock block)
     return result
 
 -- Evaluating block of statements
@@ -142,9 +139,13 @@ evalStmt (Ass _ (Ident x) e) = do
     v <- evalExpr e
     case Map.lookup x env of
         Nothing -> throwError $ unknownVarError ++ x
-        Just addr -> do
-            put $ Map.insert addr v store
-            return Nothing
+        Just (addr, ro) -> do
+            if ro == False
+                then do
+                    put $ Map.insert addr v store
+                    return Nothing
+                else
+                    throwError $ readOnlyVarError x
 
 
 runForLoop :: Ident -> HintValue -> HintValue -> Block -> EvalControl ()
@@ -152,7 +153,7 @@ runForLoop (Ident x) v1 v2 block = do
     env <- ask
     store <- get
     let addr = Map.size store
-    let newEnv = Map.insert x addr env
+    let newEnv = Map.insert x (addr, True) env
     put $ Map.insert addr v1 store
     local (const newEnv) $ loopHelp x v1 v2 block addr
     return ()
@@ -174,13 +175,17 @@ changeVIntVar x op change = do
     store <- get
     case Map.lookup x env of
         Nothing -> throwError $ unknownVarError
-        Just addr -> case Map.lookup addr store of
-            Nothing -> throwError $ unknownVarError
-            Just val -> do
-                let updatedVal = case val of
-                                VInt i -> VInt (op i change)
-                                _ -> error "Expected VInt"
-                modify $ Map.insert addr updatedVal
+        Just (addr, ro) -> 
+            if ro == False
+                then do
+                    case Map.lookup addr store of
+                        Nothing -> throwError $ unknownVarError
+                        Just val -> do
+                            let updatedVal = case val of
+                                            VInt i -> VInt (op i change)
+                                            _ -> error "Expected VInt"
+                            modify $ Map.insert addr updatedVal
+                else throwError $ readOnlyVarError x
 
 evalDeclare :: [Item] -> EvalControl Env
 evalDeclare (i : []) = do
@@ -196,13 +201,13 @@ evalSingleDeclare (Init _ (Ident x) e) = do
     env <- ask
     store <- get
     v <- evalExpr e
-    case Map.lookup x env of    
-        Just addr -> do
+    case Map.lookup x env of    --ro
+        Just (addr, ro) -> do
             put $ Map.insert addr v store  -- We already have variable with that name
             return env
         Nothing -> do
             let newAddr = Map.size store
-            let newEnv = Map.insert x newAddr env
+            let newEnv = Map.insert x (newAddr, False) env
             put $ Map.insert newAddr v store
             return newEnv
 
@@ -213,23 +218,8 @@ evalSingleDeclare (NoInit _ (Ident x)) = do
         Just addr -> throwError $ duplicateVarError ++ x
         Nothing -> do
             let newAddr = Map.size store
-            let newEnv = Map.insert x newAddr env
+            let newEnv = Map.insert x (newAddr, False) env
             return newEnv
-
--- Extra functions for evaluating logical and mathematical expressions
-operationAdd (Plus _)   e1 e2 = e1 + e2
-operationAdd (Minus _)  e1 e2 = e1 - e2
-
-operationMul (Times _)  e1 e2 = e1 * e2
-operationMul (Div _)    e1 e2 = div e1 e2
-operationMul (Mod _)    e1 e2 = e1 `mod` e2
-
-comparasionL (LTH _)    e1 e2 = e1 <  e2
-comparasionL (LE _)     e1 e2 = e1 <= e2
-comparasionL (GTH _)    e1 e2 = e1 >  e2
-comparasionL (GE _)     e1 e2 = e1 >= e2
-comparasionL (EQU _)    e1 e2 = e1 == e2
-comparasionL (NE _)     e1 e2 = e1 /= e2
 
 
 -- Evaluating expression logic
@@ -311,7 +301,7 @@ evalExpr (EVar _ (Ident x)) = do
     env <- ask
     store <- get
     case Map.lookup x env of
-        Just addr -> case Map.lookup addr store of
+        Just (addr, _) -> case Map.lookup addr store of
             Just val -> return val
             Nothing -> throwError $ noValError ++ x
         Nothing -> throwError $ unknownVarError ++ x
@@ -327,4 +317,3 @@ arrayCreator (e : es) = do
     v1 <- evalExpr e
     vR <- arrayCreator es
     return $ v1 : vR
-
