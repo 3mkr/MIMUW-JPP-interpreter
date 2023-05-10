@@ -201,13 +201,13 @@ evalSingleDeclare (Init _ (Ident x) e) = do
     env <- ask
     store <- get
     v <- evalExpr e
-    case Map.lookup x env of    --ro
+    case Map.lookup x env of
         Just (addr, ro) -> do
             if ro == False
                 then do
-                    put $ Map.insert addr v store  -- We already have variable with that name
+                    put $ Map.insert addr v store       -- We already have variable with that name
                     return env
-                else throwError $ readOnlyVarError x
+                else throwError $ readOnlyVarError x    -- We already have read-only variable with that name
         Nothing -> do
             let newAddr = Map.size store
             let newEnv = Map.insert x (newAddr, False) env
