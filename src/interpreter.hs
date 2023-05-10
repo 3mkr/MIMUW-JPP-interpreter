@@ -68,6 +68,7 @@ evalBlockOfStmts (s : ss) = do
 
 -- Evaluating single statement
 evalStmt :: Stmt -> EvalControl (Maybe StmtOutput)
+
 -- Print Statements
 evalStmt (Print _ e) = do
     v <- evalExpr e
@@ -302,7 +303,6 @@ evalExpr (EArrIdx _ eArr eIdx) = do
         else throwError indexOutOfBounds
 
 evalExpr (ETuple _ es) = do
-    --v <- tupleCreator es
     v <- arrayCreator es
     return (VTuple (v))
     
@@ -318,11 +318,6 @@ evalExpr (EVar _ (Ident x)) = do
 
 
 -- EApp expressions
-
-tupleCreator :: [Expr] -> EvalControl [HintValue]
-tupleCreator es = do
-    vs <- sequence (map evalExpr es)
-    return vs
 
 arrayCreator :: [Expr] -> EvalControl [HintValue]
 arrayCreator (e : []) = do
