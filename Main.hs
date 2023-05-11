@@ -13,6 +13,7 @@ import ErrM
 
 import Types
 import Interpreter
+import UtilFunctions
 
 main :: IO ()
 main = do
@@ -38,14 +39,8 @@ workWithFile inputFile = do
                 (Right _, store) -> do
                     putStrLn (show store)       -- TODEL
                     return ()
-        
-            --putStrLn $ "Jest git: " ++ show tree
 
 
-noInput :: IO()
-noInput = do
-    hPutStrLn stderr "Error: There is no input to interpret."
-    exitFailure
 
 
 

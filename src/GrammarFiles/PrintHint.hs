@@ -188,7 +188,7 @@ instance Print (AbsHint.Stmt' a) where
     AbsHint.BreakExp _ -> prPrec i 0 (concatD [doc (showString "break"), doc (showString ";")])
     AbsHint.ContExp _ -> prPrec i 0 (concatD [doc (showString "continue"), doc (showString ";")])
     AbsHint.Print _ expr -> prPrec i 0 (concatD [doc (showString "print"), doc (showString "("), prt 0 expr, doc (showString ")")])
-    AbsHint.Printf _ expr1 expr2 expr3 str -> prPrec i 0 (concatD [doc (showString "printf"), doc (showString "("), prt 0 expr1, prt 0 expr2, prt 0 expr3, printString str, doc (showString ")")])
+    AbsHint.Printf _ expr1 expr2 expr3 str -> prPrec i 0 (concatD [doc (showString "printf"), doc (showString "("), prt 0 expr1, doc (showString ","), prt 0 expr2, doc (showString ","), prt 0 expr3, doc (showString ","), printString str, doc (showString ")")])
 
 instance Print (AbsHint.Item' a) where
   prt i = \case

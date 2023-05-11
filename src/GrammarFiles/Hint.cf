@@ -14,8 +14,6 @@ separator	Arg "," ;
 
 -- statements ----------------------------------------------
 
-Block.		Block ::= "{" [Stmt] "}" ;
-
 separator	Stmt "" ;
 
 Empty.		Stmt ::= ";" ;
@@ -56,7 +54,7 @@ ContExp.	Stmt ::= "continue" ";" ;
 
 Print.		Stmt ::= "print" "(" Expr ")";
 
-Printf.		Stmt ::= "printf" "(" Expr Expr Expr String ")";
+Printf.		Stmt ::= "printf" "(" Expr "," Expr "," Expr "," String ")";
 
 -- Types ---------------------------------------------------
 

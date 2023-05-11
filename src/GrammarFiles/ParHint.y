@@ -133,7 +133,7 @@ Stmt
   | 'break' ';' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.BreakExp (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }
   | 'continue' ';' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.ContExp (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }
   | 'print' '(' Expr ')' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.Print (uncurry AbsHint.BNFC'Position (tokenLineCol $1)) (snd $3)) }
-  | 'printf' '(' Expr Expr Expr String ')' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.Printf (uncurry AbsHint.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $4) (snd $5) (snd $6)) }
+  | 'printf' '(' Expr ',' Expr ',' Expr ',' String ')' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.Printf (uncurry AbsHint.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $5) (snd $7) (snd $9)) }
 
 Item :: { (AbsHint.BNFC'Position, AbsHint.Item) }
 Item

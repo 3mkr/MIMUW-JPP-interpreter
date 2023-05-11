@@ -15,8 +15,16 @@ type ReadOnly   =   Bool
 
 -- Prettier names for more advanced data types
 data HintType   =   TInt | TString | TBool | TVoid | TTuple [HintType] deriving (Eq, Ord, Show)
-data HintValue  =   VInt Int | VString String | VBool Bool | VVoid | VArr [HintValue] | VTuple [HintValue]  deriving (Eq, Ord, Show)
-data StmtOutput =   Environment Env | ReturnVal HintValue
+data HintValue
+    = VInt Int
+    | VString String
+    | VBool Bool
+    | VVoid
+    | VArr [HintValue]
+    | VTuple [HintValue]
+    | VFun [Arg] Block
+    deriving (Eq, Ord, Show)
+data StmtOutput=   Environment Env | ReturnVal HintValue | LoopCont | LoopBreak
 
 -- Typechecker Environment
 type EnvType    =   Map.Map Name HintType

@@ -15,7 +15,7 @@ import SkelHint
 -- Utils import
 import Types
 import Errors
-import UtilFunctions
+import UtilFunctions   
 
 -- Starting monads with proper parameters
 runEval :: Program -> IO (Either RuntimeErr (), Store)
@@ -26,42 +26,59 @@ runEvalControl prog env store = runStateT (runExceptT (runReaderT (runMain prog)
 
 -- Finding main() and running it
 runMain :: Program -> EvalControl ()
-runMain (Program _ topDefs) = do
+runMain (Program a topDefs) = do
     let mainFunc = head $ filter isMain topDefs
-    env <- ask
-    evalFunction mainFunc env
+    (nEnv, nStore) <- saveFunToEnv (Program a topDefs)
+    put nStore
+    evalFunctionMain mainFunc nEnv
     return ()
 
-
+evalFunctionMain :: TopDef -> Env -> EvalControl()
+evalFunctionMain (FnDef _ _ _ args block) env = do
+    evalFunction (VFun args block) env []   -- for now empty list of values
+    return ()
 
 -- Evaluating function definition
-evalFunction :: TopDef -> Env -> EvalControl (Maybe HintValue)
-evalFunction (FnDef _ _ _ args block) env = do
+evalFunction :: HintValue -> Env -> [HintValue] -> EvalControl (Maybe StmtOutput)
+evalFunction (VFun args block) env vals = do
     store <- get
     let newAddr     = Map.size store
     let argNames    = map (\(Arg _ _ (Ident name)) -> name) args
     let mapSize     = length argNames
     let newAddrs    = [newAddr..newAddr+mapSize] 
-    let newEnv      = Map.fromList (zip argNames (map (\x -> (x, False)) newAddrs)) `Map.union` env     -- add argValues?
+    let newEnv      = Map.fromList (zip argNames (map (\x -> (x, False)) newAddrs)) `Map.union` env
+    let newStore    = Map.fromList (zip newAddrs vals) `Map.union` store
+    put newStore
+    {-
+    liftIO $ putStrLn $ "{\n"
+    liftIO $ putStrLn $ show newEnv
+    liftIO $ putStrLn $ "\n\n"
+    liftIO $ putStrLn $ show store
+    liftIO $ putStrLn $ "\n}"
+    -}
     result <- local (const newEnv) (evalBlock block)
     return result
 
 -- Evaluating block of statements
-evalBlock :: Block -> EvalControl (Maybe HintValue)
+evalBlock :: Block -> EvalControl (Maybe StmtOutput)
 evalBlock (Block _ stmts) = do
-    results <- evalBlockOfStmts stmts
-    case results of
-        Nothing -> return Nothing
-        Just (ReturnVal v) -> return $ Just $ v
+    result <- evalBlockOfStmts stmts
+    case result of
+        Nothing             -> return Nothing
+        Just LoopCont       -> return $ Just LoopCont
+        Just LoopBreak      -> return $ Just LoopBreak
+        Just (ReturnVal v)  -> return $ Just $ ReturnVal v
 
 evalBlockOfStmts :: [Stmt] -> EvalControl (Maybe StmtOutput)
 evalBlockOfStmts [] = return Nothing
 evalBlockOfStmts (s : ss) = do
     result <- evalStmt s
     case result of
-        Just (Environment newEnv) -> local (const newEnv) $ evalBlockOfStmts ss
-        Just v -> return $ Just v
-        Nothing -> evalBlockOfStmts ss
+        Just (Environment newEnv)   -> local (const newEnv) $ evalBlockOfStmts ss
+        Just LoopCont               -> return $ Just LoopCont
+        Just LoopBreak              -> return $ Just LoopBreak
+        Just (ReturnVal v)          -> return $ Just $ ReturnVal v
+        Nothing                     -> evalBlockOfStmts ss
 
 -- Evaluating single statement
 evalStmt :: Stmt -> EvalControl (Maybe StmtOutput)
@@ -72,23 +89,41 @@ evalStmt (Print _ e) = do
     liftIO $ putStrLn (show v)
     return Nothing
 
---evalStmt (Printf _ e1 e2 e3 msg) = do
-
+evalStmt (Printf _ e1 e2 e3 msg) = do
+    (VArr v1) <- evalExpr e1
+    (VArr v2) <- evalExpr e2
+    (VArr v3) <- evalExpr e3
+    let fullMsg = createMsg msg v1 v2 v3 []
+    liftIO $ putStrLn (show fullMsg)
+    return Nothing
 
 -- If Statements
 evalStmt (Cond _ e block) = do
     VBool b <- evalExpr e
     if b == True
         then do
-            evalBlock block
-            return Nothing
+            result <- evalBlock block
+            case result of
+                Just LoopCont  -> return $ Just LoopCont
+                Just LoopBreak -> return $ Just LoopBreak 
+                _ -> return Nothing
         else return Nothing
 
 evalStmt (CondElse _ e blockT blockF) = do
     VBool b <- evalExpr e
     if b == True
-        then evalBlock blockT
-        else evalBlock blockF
+        then do
+            result <- evalBlock blockT
+            case result of
+                Just LoopCont  -> return $ Just LoopCont
+                Just LoopBreak -> return $ Just LoopBreak
+                _ -> return Nothing
+        else do
+            result <- evalBlock blockF
+            case result of
+                Just LoopCont  -> return $ Just LoopCont
+                Just LoopBreak -> return $ Just LoopBreak
+                _ -> return Nothing
     return Nothing
 
 -- Loop Statements
@@ -96,10 +131,20 @@ evalStmt (While a e block) = do
     VBool b <- evalExpr e
     if b == True
         then do
-            evalBlock block
-            evalStmt (While a e block)
-            return Nothing
+            result <- evalBlock block
+            case result of
+                Just LoopBreak -> return Nothing
+                _ -> do
+                    evalStmt (While a e block)
+                    return Nothing
         else return Nothing
+
+evalStmt(BreakExp _) = do
+    return $ Just LoopBreak
+
+evalStmt(ContExp _) = do
+    return $ Just LoopCont
+
 
 evalStmt (For _ x e1 e2 block) = do
     v1 <- evalExpr e1
@@ -138,7 +183,7 @@ evalStmt (Ass _ (Ident x) e) = do
     store <- get
     v <- evalExpr e
     case Map.lookup x env of
-        Nothing -> throwError $ unknownVarError ++ x
+        Nothing -> throwError $ unknownVarError  x
         Just (addr, ro) -> do
             if ro == False
                 then do
@@ -162,11 +207,14 @@ loopHelp :: String -> HintValue -> HintValue -> Block -> Int -> EvalControl ()
 loopHelp x v1 v2 block addr = do
     case (v1 <= v2) of
         True -> do
-            evalBlock block
-            store <- get
-            put $ Map.insert addr (vIntAdd v1 1) store 
-            loopHelp x (vIntAdd v1 1) v2 block addr
-            return ()
+            result <- evalBlock block
+            case result of
+                Just LoopBreak -> return ()
+                _ -> do
+                    store <- get
+                    put $ Map.insert addr (vIntAdd v1 1) store 
+                    loopHelp x (vIntAdd v1 1) v2 block addr
+                    return ()
         False -> return ()
 
 changeVIntVar :: String -> (Int -> Int -> Int) -> Int -> EvalControl ()
@@ -174,12 +222,12 @@ changeVIntVar x op change = do
     env <- ask
     store <- get
     case Map.lookup x env of
-        Nothing -> throwError $ unknownVarError
+        Nothing -> throwError $ unknownVarError x
         Just (addr, ro) -> 
             if ro == False
                 then do
                     case Map.lookup addr store of
-                        Nothing -> throwError $ unknownVarError
+                        Nothing -> throwError $ noValError x
                         Just val -> do
                             let updatedVal = case val of
                                             VInt i -> VInt (op i change)
@@ -306,11 +354,24 @@ evalExpr (EVar _ (Ident x)) = do
     case Map.lookup x env of
         Just (addr, _) -> case Map.lookup addr store of
             Just val -> return val
-            Nothing -> throwError $ noValError ++ x
-        Nothing -> throwError $ unknownVarError ++ x
+            Nothing -> throwError $ noValError x
+        Nothing -> throwError $ unknownVarError x
 
 
 -- EApp expressions
+evalExpr (EApp _ (Ident x) es) = do
+    env <- ask
+    store <- get
+    vals <- arrayCreator es
+    case Map.lookup x env of
+        Nothing -> throwError $ unknownVarError x
+        Just (addr, _) -> case Map.lookup addr store of
+            Nothing -> throwError $ noValError x
+            Just (VFun args block) -> do
+                r <- evalFunction (VFun args block) env vals
+                case r of
+                    Just (ReturnVal result) -> return result
+                    _ -> return VVoid
 
 arrayCreator :: [Expr] -> EvalControl [HintValue]
 arrayCreator (e : []) = do
