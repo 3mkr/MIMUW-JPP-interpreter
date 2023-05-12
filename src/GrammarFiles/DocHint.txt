@@ -66,7 +66,6 @@ All other symbols are terminals.
   | //[Stmt]// | -> | **eps**
   |  |  **|**  | //Stmt// //[Stmt]//
   | //Stmt// | -> | ``;``
-  |  |  **|**  | //Block//
   |  |  **|**  | //Type// //[Item]// ``;``
   |  |  **|**  | //Ident// ``=`` //Expr// ``;``
   |  |  **|**  | //Ident// ``++`` ``;``
@@ -104,6 +103,7 @@ All other symbols are terminals.
   |  |  **|**  | ``false``
   |  |  **|**  | //Ident// ``(`` //[Expr]// ``)``
   |  |  **|**  | //String//
+  |  |  **|**  | **eps**
   |  |  **|**  | ``(`` //Expr// ``)``
   | //Expr5// | -> | ``-`` //Expr6//
   |  |  **|**  | ``!`` //Expr6//

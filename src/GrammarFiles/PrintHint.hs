@@ -173,7 +173,6 @@ instance Print [AbsHint.Stmt' a] where
 instance Print (AbsHint.Stmt' a) where
   prt i = \case
     AbsHint.Empty _ -> prPrec i 0 (concatD [doc (showString ";")])
-    AbsHint.BStmt _ block -> prPrec i 0 (concatD [prt 0 block])
     AbsHint.Decl _ type_ items -> prPrec i 0 (concatD [prt 0 type_, prt 0 items, doc (showString ";")])
     AbsHint.Ass _ id_ expr -> prPrec i 0 (concatD [prt 0 id_, doc (showString "="), prt 0 expr, doc (showString ";")])
     AbsHint.Incr _ id_ -> prPrec i 0 (concatD [prt 0 id_, doc (showString "++"), doc (showString ";")])
@@ -226,6 +225,7 @@ instance Print (AbsHint.Expr' a) where
     AbsHint.ELitFalse _ -> prPrec i 6 (concatD [doc (showString "false")])
     AbsHint.EApp _ id_ exprs -> prPrec i 6 (concatD [prt 0 id_, doc (showString "("), prt 0 exprs, doc (showString ")")])
     AbsHint.EString _ str -> prPrec i 6 (concatD [printString str])
+    AbsHint.EEmpty _ -> prPrec i 6 (concatD [])
     AbsHint.Neg _ expr -> prPrec i 5 (concatD [doc (showString "-"), prt 6 expr])
     AbsHint.Not _ expr -> prPrec i 5 (concatD [doc (showString "!"), prt 6 expr])
     AbsHint.EMul _ expr1 mulop expr2 -> prPrec i 4 (concatD [prt 4 expr1, prt 0 mulop, prt 5 expr2])

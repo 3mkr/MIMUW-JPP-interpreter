@@ -19,11 +19,11 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
-        [inputFile] -> workWithFile [inputFile]
+        (inputFile : rest) -> workWithFile [inputFile] rest
         _           -> noInput
 
-workWithFile :: [FilePath] -> IO ()
-workWithFile inputFile = do
+workWithFile :: [FilePath] -> [String] -> IO ()
+workWithFile inputFile vals = do
     input <- readFile $ head inputFile
     case pProgram $ myLexer input of
         Left err -> do
@@ -31,13 +31,12 @@ workWithFile inputFile = do
             exitFailure
         Right tree -> do
             --runTypeCheck
-            result <- runEval tree
+            result <- runEval tree vals
             case result of
                 (Left err, _) -> do
                     hPutStrLn stderr $ "Runtime Error: " ++ err
                     exitFailure
                 (Right _, store) -> do
-                    putStrLn (show store)       -- TODEL
                     return ()
 
 

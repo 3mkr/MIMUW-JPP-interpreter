@@ -38,7 +38,6 @@ transBlock x = case x of
 transStmt :: Show a => AbsHint.Stmt' a -> Result
 transStmt x = case x of
   AbsHint.Empty _ -> failure x
-  AbsHint.BStmt _ block -> failure x
   AbsHint.Decl _ type_ items -> failure x
   AbsHint.Ass _ ident expr -> failure x
   AbsHint.Incr _ ident -> failure x
@@ -81,6 +80,7 @@ transExpr x = case x of
   AbsHint.ELitFalse _ -> failure x
   AbsHint.EApp _ ident exprs -> failure x
   AbsHint.EString _ string -> failure x
+  AbsHint.EEmpty _ -> failure x
   AbsHint.Neg _ expr -> failure x
   AbsHint.Not _ expr -> failure x
   AbsHint.EMul _ expr1 mulop expr2 -> failure x

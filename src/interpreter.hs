@@ -18,24 +18,25 @@ import Errors
 import UtilFunctions   
 
 -- Starting monads with proper parameters
-runEval :: Program -> IO (Either RuntimeErr (), Store)
-runEval prog = runEvalControl prog Map.empty Map.empty
+runEval :: Program -> [String] -> IO (Either RuntimeErr (), Store)
+runEval prog vals = runEvalControl prog Map.empty Map.empty vals
 
-runEvalControl :: Program -> Env -> Store -> IO (Either RuntimeErr (), Store)
-runEvalControl prog env store = runStateT (runExceptT (runReaderT (runMain prog) env)) store
+runEvalControl :: Program -> Env -> Store -> [String] -> IO (Either RuntimeErr (), Store)
+runEvalControl prog env store vals = runStateT (runExceptT (runReaderT (runMain prog vals) env)) store
 
 -- Finding main() and running it
-runMain :: Program -> EvalControl ()
-runMain (Program a topDefs) = do
+runMain :: Program -> [String] -> EvalControl ()
+runMain (Program a topDefs) vals = do
     let mainFunc = head $ filter isMain topDefs
     (nEnv, nStore) <- saveFunToEnv (Program a topDefs)
     put nStore
-    evalFunctionMain mainFunc nEnv
+    evalFunctionMain mainFunc nEnv vals
     return ()
 
-evalFunctionMain :: TopDef -> Env -> EvalControl()
-evalFunctionMain (FnDef _ _ _ args block) env = do
-    evalFunction (VFun args block) env []   -- for now empty list of values
+evalFunctionMain :: TopDef -> Env -> [String] -> EvalControl()
+evalFunctionMain (FnDef _ _ _ args block) env vals = do
+    let hintVals = convertToHint vals
+    evalFunction (VFun args block) env hintVals
     return ()
 
 -- Evaluating function definition
@@ -49,13 +50,7 @@ evalFunction (VFun args block) env vals = do
     let newEnv      = Map.fromList (zip argNames (map (\x -> (x, False)) newAddrs)) `Map.union` env
     let newStore    = Map.fromList (zip newAddrs vals) `Map.union` store
     put newStore
-    {-
-    liftIO $ putStrLn $ "{\n"
-    liftIO $ putStrLn $ show newEnv
-    liftIO $ putStrLn $ "\n\n"
-    liftIO $ putStrLn $ show store
-    liftIO $ putStrLn $ "\n}"
-    -}
+
     result <- local (const newEnv) (evalBlock block)
     return result
 
@@ -192,6 +187,25 @@ evalStmt (Ass _ (Ident x) e) = do
                 else
                     throwError $ readOnlyVarError x
 
+changeVIntVar :: String -> (Int -> Int -> Int) -> Int -> EvalControl ()
+changeVIntVar x op change = do
+    env <- ask
+    store <- get
+    case Map.lookup x env of
+        Nothing -> throwError $ unknownVarError  x
+        Just (addr, ro) -> do
+            if ro == False
+                then do
+                    case Map.lookup addr store of
+                        Just (VInt v) -> do
+                            let newVal = VInt (op v change)
+                            let newStore = Map.insert addr newVal store
+                            put newStore
+                            return ()
+                        Nothing -> throwError $ noValError x
+                        _ -> throwError $ wrongTypeNotVInt x
+                else
+                    throwError $ readOnlyVarError x
 
 runForLoop :: Ident -> HintValue -> HintValue -> Block -> EvalControl ()
 runForLoop (Ident x) v1 v2 block = do
@@ -217,24 +231,6 @@ loopHelp x v1 v2 block addr = do
                     return ()
         False -> return ()
 
-changeVIntVar :: String -> (Int -> Int -> Int) -> Int -> EvalControl ()
-changeVIntVar x op change = do
-    env <- ask
-    store <- get
-    case Map.lookup x env of
-        Nothing -> throwError $ unknownVarError x
-        Just (addr, ro) -> 
-            if ro == False
-                then do
-                    case Map.lookup addr store of
-                        Nothing -> throwError $ noValError x
-                        Just val -> do
-                            let updatedVal = case val of
-                                            VInt i -> VInt (op i change)
-                                            _ -> error "Expected VInt"
-                            modify $ Map.insert addr updatedVal
-                else throwError $ readOnlyVarError x
-
 evalDeclare :: [Item] -> EvalControl Env
 evalDeclare (i : []) = do
     newEnv <- evalSingleDeclare i
@@ -251,11 +247,10 @@ evalSingleDeclare (Init _ (Ident x) e) = do
     v <- evalExpr e
     case Map.lookup x env of
         Just (addr, ro) -> do
-            if ro == False
-                then do
-                    put $ Map.insert addr v store       -- We already have variable with that name
-                    return env
-                else throwError $ readOnlyVarError x    -- We already have read-only variable with that name
+            let newAddr = Map.size store
+            let newEnv = Map.insert x (newAddr, False) env
+            put $ Map.insert newAddr v store       -- We already have variable with that name 
+            return newEnv
         Nothing -> do
             let newAddr = Map.size store
             let newEnv = Map.insert x (newAddr, False) env
@@ -358,7 +353,7 @@ evalExpr (EVar _ (Ident x)) = do
         Nothing -> throwError $ unknownVarError x
 
 
--- EApp expressions
+-- EApp expression
 evalExpr (EApp _ (Ident x) es) = do
     env <- ask
     store <- get
@@ -373,7 +368,12 @@ evalExpr (EApp _ (Ident x) es) = do
                     Just (ReturnVal result) -> return result
                     _ -> return VVoid
 
+evalExpr (Eempty _) = do
+    return ()
+
 arrayCreator :: [Expr] -> EvalControl [HintValue]
+arrayCreator [] = do
+    return []
 arrayCreator (e : []) = do
     v1 <- evalExpr e
     return $ [v1]

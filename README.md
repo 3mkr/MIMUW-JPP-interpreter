@@ -15,6 +15,7 @@ Zmienne read-only występują na ten moment tylko w pętli for i są domyślnie 
 
     for (i := s to e) { ... }
 
+Program akceptuje parametry wywołania typów int, boolean oraz string (na potrzeby parsowania napisy muszą być otoczone '*')
 
 Aby utworzyć pliki gramatyki:
 

@@ -3,6 +3,8 @@ module UtilFunctions where
 import qualified Data.Map as Map
 import System.Exit          (exitFailure)
 import System.IO
+import Data.Char (isDigit)
+import Data.Array
 
 import AbsHint
 import ErrM
@@ -38,6 +40,24 @@ isMain _ = False
 isNotMain :: TopDef -> Bool
 isNotMain (FnDef _ _ (Ident "main") _ _) = False
 isNotMain _ = True
+
+isAllDigits :: String -> Bool
+isAllDigits s = all isDigit s
+
+convertToHint :: [String] -> [HintValue]
+convertToHint ss = convertHelp ss []
+
+convertHelp :: [String] -> [HintValue] -> [HintValue]
+convertHelp [] acc = acc
+convertHelp (s : ss) acc = convertHelp ss ((valToHint s) : acc)
+
+valToHint :: String -> HintValue
+valToHint s
+    | all isDigit s = VInt $ read s
+    | head s == '*' && last s == '*' = VString (init (tail s))
+    | s == "true" = VBool True
+    | s == "false" = VBool False
+
 
 createMsg :: String -> [HintValue] -> [HintValue] -> [HintValue] -> String -> String
 createMsg [] _ _ _ acc = reverse acc

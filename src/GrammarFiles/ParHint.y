@@ -118,7 +118,6 @@ ListStmt
 Stmt :: { (AbsHint.BNFC'Position, AbsHint.Stmt) }
 Stmt
   : ';' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.Empty (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }
-  | Block { (fst $1, AbsHint.BStmt (fst $1) (snd $1)) }
   | Type ListItem ';' { (fst $1, AbsHint.Decl (fst $1) (snd $1) (snd $2)) }
   | Ident '=' Expr ';' { (fst $1, AbsHint.Ass (fst $1) (snd $1) (snd $3)) }
   | Ident '++' ';' { (fst $1, AbsHint.Incr (fst $1) (snd $1)) }
@@ -171,6 +170,7 @@ Expr6
   | 'false' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.ELitFalse (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }
   | Ident '(' ListExpr ')' { (fst $1, AbsHint.EApp (fst $1) (snd $1) (snd $3)) }
   | String { (fst $1, AbsHint.EString (fst $1) (snd $1)) }
+  | {- empty -} { (AbsHint.BNFC'NoPosition, AbsHint.EEmpty AbsHint.BNFC'NoPosition) }
   | '(' Expr ')' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), (snd $2)) }
 
 Expr5 :: { (AbsHint.BNFC'Position, AbsHint.Expr) }
