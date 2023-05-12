@@ -1,0 +1,12 @@
+int incBy10 (int x) {
+    x = x + 10;
+    return x;
+}
+
+int main() {
+    int x = 9;
+    printf([x], [ ], [ ], "x equals: %d");
+    int y = incBy10(x);
+    printf([y], [ ], [ ], "y equals: %d");
+    printf([x], [ ], [ ], "x equals: %d (did not change)");
+}
