@@ -66,6 +66,11 @@ createMsg ('%' : 's' : ms) is (s : ss) bs acc   = createMsg ms is ss bs ((revers
 createMsg ('%' : 'b' : ms) is ss (b : bs) acc   = createMsg ms is ss bs ((reverse (show b)) ++ acc)
 createMsg (m : ms) is ss bs acc                 = createMsg ms is ss bs (m : acc)
 
+modifyArrAtIdx :: [HintValue] -> Int -> HintValue -> [HintValue] -> [HintValue]
+modifyArrAtIdx (t : ts) 0 v as = modifyArrAtIdx ts (-1) v (v : as)
+modifyArrAtIdx [] i v acc = reverse acc
+modifyArrAtIdx (t : ts) i v acc = modifyArrAtIdx ts (i - 1) v (t : acc)
+
 -- Extra functions for evaluating logical and mathematical expressions
 operationAdd (Plus _)   e1 e2 = e1 + e2
 operationAdd (Minus _)  e1 e2 = e1 - e2

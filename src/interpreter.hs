@@ -24,6 +24,7 @@ runEval prog vals = runEvalControl prog Map.empty Map.empty vals
 runEvalControl :: Program -> Env -> Store -> [String] -> IO (Either RuntimeErr (), Store)
 runEvalControl prog env store vals = runStateT (runExceptT (runReaderT (runMain prog vals) env)) store
 
+
 -- Finding main() and running it
 runMain :: Program -> [String] -> EvalControl ()
 runMain (Program a topDefs) vals = do
@@ -39,6 +40,7 @@ evalFunctionMain (FnDef _ _ _ args block) env vals = do
     evalFunction (VFun args block) env hintVals
     return ()
 
+
 -- Evaluating function definition
 evalFunction :: HintValue -> Env -> [HintValue] -> EvalControl (Maybe StmtOutput)
 evalFunction (VFun args block) env vals = do
@@ -53,6 +55,7 @@ evalFunction (VFun args block) env vals = do
 
     result <- local (const newEnv) (evalBlock block)
     return result
+
 
 -- Evaluating block of statements
 evalBlock :: Block -> EvalControl (Maybe StmtOutput)
@@ -75,8 +78,10 @@ evalBlockOfStmts (s : ss) = do
         Just (ReturnVal v)          -> return $ Just $ ReturnVal v
         Nothing                     -> evalBlockOfStmts ss
 
+
 -- Evaluating single statement
 evalStmt :: Stmt -> EvalControl (Maybe StmtOutput)
+
 
 -- Print Statements
 evalStmt (Print _ e) = do
@@ -91,6 +96,7 @@ evalStmt (Printf _ e1 e2 e3 msg) = do
     let fullMsg = createMsg msg v1 v2 v3 []
     liftIO $ putStrLn (show fullMsg)
     return Nothing
+
 
 -- If Statements
 evalStmt (Cond _ e block) = do
@@ -121,6 +127,7 @@ evalStmt (CondElse _ e blockT blockF) = do
                 _ -> return Nothing
     return Nothing
 
+
 -- Loop Statements
 evalStmt (While a e block) = do
     VBool b <- evalExpr e
@@ -140,12 +147,12 @@ evalStmt(BreakExp _) = do
 evalStmt(ContExp _) = do
     return $ Just LoopCont
 
-
 evalStmt (For _ x e1 e2 block) = do
     v1 <- evalExpr e1
     v2 <- evalExpr e2
     runForLoop x v1 v2 block
     return Nothing
+
 
 -- ++ and -- operators
 evalStmt (Incr _ (Ident x)) = do
@@ -156,6 +163,7 @@ evalStmt (Decr _ (Ident x)) = do
     changeVIntVar x (-) (1)
     return Nothing
 
+
 -- Return statements
 evalStmt (Ret _ e) = do
     v <- evalExpr e
@@ -163,10 +171,13 @@ evalStmt (Ret _ e) = do
 
 evalStmt (VRet _) = return Nothing
 
+
+-- Other Statements
 evalStmt (SExp _ e) = do
     evalExpr e >> return Nothing
 
 evalStmt (Empty _) = return Nothing
+
 
 -- Variable declarations and assignments
 evalStmt (Decl _ _ items) = do
@@ -209,10 +220,6 @@ evalStmt (ArrAss _ (Ident x) idx e) = do
                 else
                     throwError $ readOnlyVarError x
 
-modifyArrAtIdx :: [HintValue] -> Int -> HintValue -> [HintValue] -> [HintValue]
-modifyArrAtIdx (t : ts) 0 v as = modifyArrAtIdx ts (-1) v (v : as)
-modifyArrAtIdx [] i v acc = reverse acc
-modifyArrAtIdx (t : ts) i v acc = modifyArrAtIdx ts (i - 1) v (t : acc)
 
 changeVIntVar :: String -> (Int -> Int -> Int) -> Int -> EvalControl ()
 changeVIntVar x op change = do
@@ -234,6 +241,7 @@ changeVIntVar x op change = do
                 else
                     throwError $ readOnlyVarError x
 
+
 runForLoop :: Ident -> HintValue -> HintValue -> Block -> EvalControl ()
 runForLoop (Ident x) v1 v2 block = do
     env <- ask
@@ -243,6 +251,7 @@ runForLoop (Ident x) v1 v2 block = do
     put $ Map.insert addr v1 store
     local (const newEnv) $ loopHelp x v1 v2 block addr
     return ()
+
 
 loopHelp :: String -> HintValue -> HintValue -> Block -> Int -> EvalControl ()
 loopHelp x v1 v2 block addr = do
@@ -258,6 +267,7 @@ loopHelp x v1 v2 block addr = do
                     return ()
         False -> return ()
 
+
 evalDeclare :: [Item] -> EvalControl Env
 evalDeclare (i : []) = do
     newEnv <- evalSingleDeclare i
@@ -266,6 +276,7 @@ evalDeclare (i : is) = do
     newEnv <- evalSingleDeclare i 
     newerEnv <- local (const newEnv) $ evalDeclare is
     return newerEnv
+
 
 evalSingleDeclare :: Item -> EvalControl Env
 evalSingleDeclare (Init _ (Ident x) e) = do
@@ -295,8 +306,10 @@ evalSingleDeclare (NoInit _ (Ident x)) = do
             return newEnv
 
 
+
 -- Evaluating expression logic
 evalExpr :: Expr -> EvalControl HintValue
+
 
 -- Math expressions
 evalExpr (ELitInt _ i) = do
@@ -322,6 +335,7 @@ evalExpr (EMul _ e1 op e2) = do
 evalExpr (Neg _ e) = do
     VInt v <- evalExpr e
     return $ VInt $ -v
+
 
 -- Logical expressions
 evalExpr (ELitTrue _) = do
@@ -349,9 +363,11 @@ evalExpr (Not _ e) = do
     VBool b <- evalExpr e
     return $ VBool $ not b
 
+
 -- String expression
 evalExpr (EString _ s) = do
     return (VString (s))
+
 
 -- Array & Tuple expressions
 evalExpr (EArr _ es) = do
@@ -369,6 +385,7 @@ evalExpr (ETuple _ es) = do
     v <- arrayCreator es
     return (VTuple (v))
     
+
 -- Variable expressions
 evalExpr (EVar _ (Ident x)) = do
     env <- ask
@@ -395,12 +412,17 @@ evalExpr (EApp _ (Ident x) es) = do
                     Just (ReturnVal result) -> return result
                     _ -> return VVoid
 
+
+-- Reading input expression
 evalExpr(EInput _) = do
     v <- liftIO $ getLine
     return $ valToHint v
 
+
+-- Empty expression
 evalExpr (EEmpty _) = do
     return VVoid
+
 
 arrayCreator :: [Expr] -> EvalControl [HintValue]
 arrayCreator [] = do
