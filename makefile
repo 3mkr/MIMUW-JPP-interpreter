@@ -10,6 +10,7 @@ interpreter:
 
 fast: 
 	ghc -o interpreter --make -isrc/ -isrc/Utils -isrc/GrammarFiles Main.hs
+
 clean:
 	rm -f Interpreter *.o *.hi
 	rm -f ./src/Utils/*.o

@@ -82,6 +82,7 @@ All other symbols are terminals.
   |  |  **|**  | ``continue`` ``;``
   |  |  **|**  | ``print`` ``(`` //Expr// ``)``
   |  |  **|**  | ``printf`` ``(`` //Expr// ``,`` //Expr// ``,`` //Expr// ``,`` //String// ``)``
+  |  |  **|**  | ``scan`` ``(`` //Ident// ``)``
   | //Item// | -> | //Ident//
   |  |  **|**  | //Ident// ``=`` //Expr//
   | //[Item]// | -> | //Item//
@@ -104,11 +105,7 @@ All other symbols are terminals.
   |  |  **|**  | ``false``
   |  |  **|**  | //Ident// ``(`` //[Expr]// ``)``
   |  |  **|**  | //String//
-  |  |  **|**  | **eps**
   |  |  **|**  | ``(`` //Expr// ``)``
-  | //Expr// | -> | ``scan``
-  |  |  **|**  | //Expr1// ``||`` //Expr//
-  |  |  **|**  | //Expr1//
   | //Expr5// | -> | ``-`` //Expr6//
   |  |  **|**  | ``!`` //Expr6//
   |  |  **|**  | //Expr6//
@@ -120,6 +117,8 @@ All other symbols are terminals.
   |  |  **|**  | //Expr3//
   | //Expr1// | -> | //Expr2// ``&&`` //Expr1//
   |  |  **|**  | //Expr2//
+  | //Expr// | -> | //Expr1// ``||`` //Expr//
+  |  |  **|**  | //Expr1//
   | //[Expr]// | -> | **eps**
   |  |  **|**  | //Expr//
   |  |  **|**  | //Expr// ``,`` //[Expr]//

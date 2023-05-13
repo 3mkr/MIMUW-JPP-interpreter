@@ -53,6 +53,7 @@ data Stmt' a
     | ContExp a
     | Print a (Expr' a)
     | Printf a (Expr' a) (Expr' a) (Expr' a) String
+    | Input a Ident
   deriving (C.Eq, C.Ord, C.Show, C.Read, C.Functor, C.Foldable, C.Traversable)
 
 type Item = Item' BNFC'Position
@@ -81,8 +82,6 @@ data Expr' a
     | ELitFalse a
     | EApp a Ident [Expr' a]
     | EString a String
-    | EEmpty a
-    | EInput a
     | Neg a (Expr' a)
     | Not a (Expr' a)
     | EMul a (Expr' a) (MulOp' a) (Expr' a)
@@ -157,6 +156,7 @@ instance HasPosition Stmt where
     ContExp p -> p
     Print p _ -> p
     Printf p _ _ _ _ -> p
+    Input p _ -> p
 
 instance HasPosition Item where
   hasPosition = \case
@@ -184,8 +184,6 @@ instance HasPosition Expr where
     ELitFalse p -> p
     EApp p _ _ -> p
     EString p _ -> p
-    EEmpty p -> p
-    EInput p -> p
     Neg p _ -> p
     Not p _ -> p
     EMul p _ _ _ -> p

@@ -49,7 +49,7 @@ evalFunctionMain (FnDef _ _ _ args block) env vals = do
 evalFunction :: HintValue -> Env -> [HintValue] -> EvalControl (Maybe StmtOutput)
 evalFunction (VFun args block) env vals = do
     store <- get
-    let newAddr     = Map.size store
+    let newAddr     = Map.size env
     let argNames    = map (\(Arg _ _ (Ident name)) -> name) args
     let mapSize     = length argNames
     let newAddrs    = [newAddr..newAddr+mapSize] 
@@ -133,7 +133,7 @@ evalStmt (CondElse _ e blockT blockF) = do
 
 
 -- Loop Statements
-evalStmt (While a e block) = do
+evalStmt (While loc e block) = do
     VBool b <- evalExpr e
     if b == True
         then do
@@ -141,7 +141,7 @@ evalStmt (While a e block) = do
             case result of
                 Just LoopBreak -> return Nothing
                 _ -> do
-                    evalStmt (While a e block)
+                    evalStmt (While loc e block)
                     return Nothing
         else return Nothing
 
@@ -181,6 +181,23 @@ evalStmt (VRet _) = return Nothing
 -- Other Statements
 evalStmt (SExp _ e) = do
     evalExpr e >> return Nothing
+
+-- Reading input expression
+evalStmt(Input loc (Ident x)) = do
+    env <- ask
+    store <- get
+    v <- liftIO $ getLine
+    let hintV = valToHint v
+    line <- extractLine loc
+    case Map.lookup x env of
+        Nothing -> throwError $ unknownVarError x (show line)
+        Just (addr, ro) -> do
+            if ro == False
+                then do
+                    put $ Map.insert addr hintV store
+                    return Nothing
+                else
+                    throwError $ readOnlyVarError x (show line)
 
 evalStmt (Empty _) = return Nothing
 
@@ -254,7 +271,7 @@ runForLoop :: Ident -> HintValue -> HintValue -> Block -> EvalControl ()
 runForLoop (Ident x) v1 v2 block = do
     env <- ask
     store <- get
-    let addr = Map.size store
+    let addr = Map.size env
     let newEnv = Map.insert x (addr, True) env
     put $ Map.insert addr v1 store
     local (const newEnv) $ loopHelp x v1 v2 block addr
@@ -293,12 +310,12 @@ evalSingleDeclare (Init _ (Ident x) e) = do
     v <- evalExpr e
     case Map.lookup x env of
         Just (addr, ro) -> do
-            let newAddr = Map.size store
+            let newAddr = Map.size env
             let newEnv = Map.insert x (newAddr, False) env
             put $ Map.insert newAddr v store       -- We already have variable with that name 
             return newEnv
         Nothing -> do
-            let newAddr = Map.size store
+            let newAddr = Map.size env
             let newEnv = Map.insert x (newAddr, False) env
             put $ Map.insert newAddr v store
             return newEnv
@@ -310,7 +327,7 @@ evalSingleDeclare (NoInit loc (Ident x)) = do
     case Map.lookup x env of    
         Just addr -> throwError $ duplicateVarError x (show line)
         Nothing -> do
-            let newAddr = Map.size store
+            let newAddr = Map.size env
             let newEnv = Map.insert x (newAddr, False) env
             return newEnv
 
@@ -355,9 +372,9 @@ evalExpr (ELitFalse _) = do
     return (VBool (False))
 
 evalExpr (ERel _ e1 rel e2) = do
-    b1 <- evalExpr e1
-    b2 <- evalExpr e2
-    return $ VBool (comparasionL rel b1 b2)
+    v1 <- evalExpr e1
+    v2 <- evalExpr e2
+    return $ VBool (comparasionL rel v1 v2)
 
 evalExpr (EAnd _ e1 e2) = do
     VBool b1 <- evalExpr e1
@@ -426,15 +443,9 @@ evalExpr (EApp loc (Ident x) es) = do
                     _ -> return VVoid
 
 
--- Reading input expression
-evalExpr(EInput _) = do
-    v <- liftIO $ getLine
-    return $ valToHint v
-
-
 -- Empty expression
-evalExpr (EEmpty _) = do
-    return VVoid
+--evalExpr (EEmpty _) = do
+--    return VVoid
 
 
 arrayCreator :: [Expr] -> EvalControl [HintValue]

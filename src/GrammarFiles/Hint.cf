@@ -58,6 +58,8 @@ Print.		Stmt ::= "print" "(" Expr ")";
 
 Printf.		Stmt ::= "printf" "(" Expr "," Expr "," Expr "," String ")";
 
+Input.      Stmt ::= "scan" "(" Ident ")" ;
+
 -- Types ---------------------------------------------------
 
 Int.       	Type ::= "int" ;
@@ -95,10 +97,6 @@ ELitFalse. 	Expr6 ::= "false" ;
 EApp.      	Expr6 ::= Ident "(" [Expr] ")" ;
 
 EString.   	Expr6 ::= String ;
-
-EEmpty.     Expr6 ::= ;
-
-EInput.     Expr ::= "scan" ;
 
 Neg.       	Expr5 ::= "-" Expr6 ;
 

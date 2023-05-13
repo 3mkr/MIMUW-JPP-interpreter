@@ -54,6 +54,7 @@ transStmt x = case x of
   AbsHint.ContExp _ -> failure x
   AbsHint.Print _ expr -> failure x
   AbsHint.Printf _ expr1 expr2 expr3 string -> failure x
+  AbsHint.Input _ ident -> failure x
 
 transItem :: Show a => AbsHint.Item' a -> Result
 transItem x = case x of
@@ -81,8 +82,6 @@ transExpr x = case x of
   AbsHint.ELitFalse _ -> failure x
   AbsHint.EApp _ ident exprs -> failure x
   AbsHint.EString _ string -> failure x
-  AbsHint.EEmpty _ -> failure x
-  AbsHint.EInput _ -> failure x
   AbsHint.Neg _ expr -> failure x
   AbsHint.Not _ expr -> failure x
   AbsHint.EMul _ expr1 mulop expr2 -> failure x

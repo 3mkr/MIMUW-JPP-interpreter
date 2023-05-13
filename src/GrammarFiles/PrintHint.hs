@@ -189,6 +189,7 @@ instance Print (AbsHint.Stmt' a) where
     AbsHint.ContExp _ -> prPrec i 0 (concatD [doc (showString "continue"), doc (showString ";")])
     AbsHint.Print _ expr -> prPrec i 0 (concatD [doc (showString "print"), doc (showString "("), prt 0 expr, doc (showString ")")])
     AbsHint.Printf _ expr1 expr2 expr3 str -> prPrec i 0 (concatD [doc (showString "printf"), doc (showString "("), prt 0 expr1, doc (showString ","), prt 0 expr2, doc (showString ","), prt 0 expr3, doc (showString ","), printString str, doc (showString ")")])
+    AbsHint.Input _ id_ -> prPrec i 0 (concatD [doc (showString "scan"), doc (showString "("), prt 0 id_, doc (showString ")")])
 
 instance Print (AbsHint.Item' a) where
   prt i = \case
@@ -226,8 +227,6 @@ instance Print (AbsHint.Expr' a) where
     AbsHint.ELitFalse _ -> prPrec i 6 (concatD [doc (showString "false")])
     AbsHint.EApp _ id_ exprs -> prPrec i 6 (concatD [prt 0 id_, doc (showString "("), prt 0 exprs, doc (showString ")")])
     AbsHint.EString _ str -> prPrec i 6 (concatD [printString str])
-    AbsHint.EEmpty _ -> prPrec i 6 (concatD [])
-    AbsHint.EInput _ -> prPrec i 0 (concatD [doc (showString "scan")])
     AbsHint.Neg _ expr -> prPrec i 5 (concatD [doc (showString "-"), prt 6 expr])
     AbsHint.Not _ expr -> prPrec i 5 (concatD [doc (showString "!"), prt 6 expr])
     AbsHint.EMul _ expr1 mulop expr2 -> prPrec i 4 (concatD [prt 4 expr1, prt 0 mulop, prt 5 expr2])

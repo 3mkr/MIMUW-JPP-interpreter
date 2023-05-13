@@ -13,11 +13,14 @@ import SkelHint
 
 import Types
 
+-- Main utils
 noInput :: IO()
 noInput = do
     hPutStrLn stderr "Error: There is no input to interpret."
     exitFailure
 
+
+--Interpreter utils
 tupleToVFun :: ([Arg], Block) -> HintValue
 tupleToVFun (x, y) = VFun x y
 
@@ -88,3 +91,29 @@ comparasionL (NE _)     e1 e2 = e1 /= e2
 
 vIntAdd :: HintValue -> Int -> HintValue
 vIntAdd (VInt v) i = (VInt (v + i))
+
+
+-- TypeChecker utils
+makeArgHint :: Arg -> HintType
+makeArgHint (Arg _ (Int _) _)        =   TInt
+makeArgHint (Arg _ (Str _) _)        =   TString
+makeArgHint (Arg _ (Bool _) _)       =   TBool
+makeArgHint (Arg _ (Void _) _)       =   TVoid
+makeArgHint (Arg _ (Tuple _ ts) _)   =   TTuple (map makeTypeHint ts)
+makeArgHint (Arg _ (Array _ ts) _)   =   TArr (makeTypeHint ts)
+
+makeTypeHint :: Type -> HintType
+makeTypeHint (Int _)         =   TInt
+makeTypeHint (Str _)         =   TString
+makeTypeHint (Bool _)        =   TBool
+makeTypeHint (Void _)        =   TVoid
+makeTypeHint (Tuple _ ts)    =    TTuple (map makeTypeHint ts)
+makeTypeHint (Array _ ts)    =    TArr (makeTypeHint ts)
+--makeTypeHint (Fun _ t ts)    =    TFun (makeTypeHint t) (map makeTypeHint ts)
+
+valToHintType :: String -> HintType
+valToHintType s
+    | all isDigit s = TInt
+    | head s == '*' && last s == '*' = TString
+    | s == "true" = TBool
+    | s == "false" = TBool

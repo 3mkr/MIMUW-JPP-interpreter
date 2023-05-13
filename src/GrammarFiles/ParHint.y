@@ -135,6 +135,7 @@ Stmt
   | 'continue' ';' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.ContExp (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }
   | 'print' '(' Expr ')' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.Print (uncurry AbsHint.BNFC'Position (tokenLineCol $1)) (snd $3)) }
   | 'printf' '(' Expr ',' Expr ',' Expr ',' String ')' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.Printf (uncurry AbsHint.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $5) (snd $7) (snd $9)) }
+  | 'scan' '(' Ident ')' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.Input (uncurry AbsHint.BNFC'Position (tokenLineCol $1)) (snd $3)) }
 
 Item :: { (AbsHint.BNFC'Position, AbsHint.Item) }
 Item
@@ -172,14 +173,7 @@ Expr6
   | 'false' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.ELitFalse (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }
   | Ident '(' ListExpr ')' { (fst $1, AbsHint.EApp (fst $1) (snd $1) (snd $3)) }
   | String { (fst $1, AbsHint.EString (fst $1) (snd $1)) }
-  | {- empty -} { (AbsHint.BNFC'NoPosition, AbsHint.EEmpty AbsHint.BNFC'NoPosition) }
   | '(' Expr ')' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), (snd $2)) }
-
-Expr :: { (AbsHint.BNFC'Position, AbsHint.Expr) }
-Expr
-  : 'scan' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.EInput (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }
-  | Expr1 '||' Expr { (fst $1, AbsHint.EOr (fst $1) (snd $1) (snd $3)) }
-  | Expr1 { (fst $1, (snd $1)) }
 
 Expr5 :: { (AbsHint.BNFC'Position, AbsHint.Expr) }
 Expr5
@@ -206,6 +200,11 @@ Expr1 :: { (AbsHint.BNFC'Position, AbsHint.Expr) }
 Expr1
   : Expr2 '&&' Expr1 { (fst $1, AbsHint.EAnd (fst $1) (snd $1) (snd $3)) }
   | Expr2 { (fst $1, (snd $1)) }
+
+Expr :: { (AbsHint.BNFC'Position, AbsHint.Expr) }
+Expr
+  : Expr1 '||' Expr { (fst $1, AbsHint.EOr (fst $1) (snd $1) (snd $3)) }
+  | Expr1 { (fst $1, (snd $1)) }
 
 ListExpr :: { (AbsHint.BNFC'Position, [AbsHint.Expr]) }
 ListExpr
