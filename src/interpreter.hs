@@ -187,6 +187,33 @@ evalStmt (Ass _ (Ident x) e) = do
                 else
                     throwError $ readOnlyVarError x
 
+evalStmt (ArrAss _ (Ident x) idx e) = do
+    env <- ask
+    store <- get
+    v <- evalExpr e
+    VInt i <- evalExpr idx
+    case Map.lookup x env of
+        Nothing -> throwError $ unknownVarError x
+        Just (addr, ro) -> do
+            if ro == False
+                then do
+                    case Map.lookup addr store of
+                            Just (VArr arr) -> do
+                                let newArr = modifyArrAtIdx arr i v []
+                                let newVal = VArr (newArr)
+                                let newStore = Map.insert addr newVal store
+                                put newStore
+                                return Nothing
+                            Nothing -> throwError $ noValError x
+                            _ -> throwError $ wrongTypeError x "VArr"
+                else
+                    throwError $ readOnlyVarError x
+
+modifyArrAtIdx :: [HintValue] -> Int -> HintValue -> [HintValue] -> [HintValue]
+modifyArrAtIdx (t : ts) 0 v as = modifyArrAtIdx ts (-1) v (v : as)
+modifyArrAtIdx [] i v acc = reverse acc
+modifyArrAtIdx (t : ts) i v acc = modifyArrAtIdx ts (i - 1) v (t : acc)
+
 changeVIntVar :: String -> (Int -> Int -> Int) -> Int -> EvalControl ()
 changeVIntVar x op change = do
     env <- ask
@@ -203,7 +230,7 @@ changeVIntVar x op change = do
                             put newStore
                             return ()
                         Nothing -> throwError $ noValError x
-                        _ -> throwError $ wrongTypeNotVInt x
+                        _ -> throwError $ wrongTypeError x "VInt"
                 else
                     throwError $ readOnlyVarError x
 
@@ -368,8 +395,12 @@ evalExpr (EApp _ (Ident x) es) = do
                     Just (ReturnVal result) -> return result
                     _ -> return VVoid
 
-evalExpr (Eempty _) = do
-    return ()
+evalExpr(EInput _) = do
+    v <- liftIO $ getLine
+    return $ valToHint v
+
+evalExpr (EEmpty _) = do
+    return VVoid
 
 arrayCreator :: [Expr] -> EvalControl [HintValue]
 arrayCreator [] = do

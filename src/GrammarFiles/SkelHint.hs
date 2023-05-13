@@ -40,6 +40,7 @@ transStmt x = case x of
   AbsHint.Empty _ -> failure x
   AbsHint.Decl _ type_ items -> failure x
   AbsHint.Ass _ ident expr -> failure x
+  AbsHint.ArrAss _ ident expr1 expr2 -> failure x
   AbsHint.Incr _ ident -> failure x
   AbsHint.Decr _ ident -> failure x
   AbsHint.Ret _ expr -> failure x
@@ -81,6 +82,7 @@ transExpr x = case x of
   AbsHint.EApp _ ident exprs -> failure x
   AbsHint.EString _ string -> failure x
   AbsHint.EEmpty _ -> failure x
+  AbsHint.EInput _ -> failure x
   AbsHint.Neg _ expr -> failure x
   AbsHint.Not _ expr -> failure x
   AbsHint.EMul _ expr1 mulop expr2 -> failure x

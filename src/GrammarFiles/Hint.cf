@@ -30,6 +30,8 @@ separator 	nonempty Item "," ;
 
 Ass.       	Stmt ::= Ident "=" Expr  ";" ;
 
+ArrAss.     Stmt ::= Ident "[" Expr "]" "=" Expr  ";" ;
+
 Incr.      	Stmt ::= Ident "++"  ";" ;
 
 Decr.     	Stmt ::= Ident "--"  ";" ;
@@ -95,6 +97,8 @@ EApp.      	Expr6 ::= Ident "(" [Expr] ")" ;
 EString.   	Expr6 ::= String ;
 
 EEmpty.     Expr6 ::= ;
+
+EInput.     Expr ::= "scan" ;
 
 Neg.       	Expr5 ::= "-" Expr6 ;
 

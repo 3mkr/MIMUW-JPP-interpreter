@@ -59,15 +59,16 @@ import LexHint
   'print'    { PT _ (TS _ 34) }
   'printf'   { PT _ (TS _ 35) }
   'return'   { PT _ (TS _ 36) }
-  'string'   { PT _ (TS _ 37) }
-  'to'       { PT _ (TS _ 38) }
-  'true'     { PT _ (TS _ 39) }
-  'tuple'    { PT _ (TS _ 40) }
-  'void'     { PT _ (TS _ 41) }
-  'while'    { PT _ (TS _ 42) }
-  '{'        { PT _ (TS _ 43) }
-  '||'       { PT _ (TS _ 44) }
-  '}'        { PT _ (TS _ 45) }
+  'scan'     { PT _ (TS _ 37) }
+  'string'   { PT _ (TS _ 38) }
+  'to'       { PT _ (TS _ 39) }
+  'true'     { PT _ (TS _ 40) }
+  'tuple'    { PT _ (TS _ 41) }
+  'void'     { PT _ (TS _ 42) }
+  'while'    { PT _ (TS _ 43) }
+  '{'        { PT _ (TS _ 44) }
+  '||'       { PT _ (TS _ 45) }
+  '}'        { PT _ (TS _ 46) }
   L_Ident    { PT _ (TV _)    }
   L_integ    { PT _ (TI _)    }
   L_quoted   { PT _ (TL _)    }
@@ -120,6 +121,7 @@ Stmt
   : ';' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.Empty (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }
   | Type ListItem ';' { (fst $1, AbsHint.Decl (fst $1) (snd $1) (snd $2)) }
   | Ident '=' Expr ';' { (fst $1, AbsHint.Ass (fst $1) (snd $1) (snd $3)) }
+  | Ident '[' Expr ']' '=' Expr ';' { (fst $1, AbsHint.ArrAss (fst $1) (snd $1) (snd $3) (snd $6)) }
   | Ident '++' ';' { (fst $1, AbsHint.Incr (fst $1) (snd $1)) }
   | Ident '--' ';' { (fst $1, AbsHint.Decr (fst $1) (snd $1)) }
   | 'return' Expr ';' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.Ret (uncurry AbsHint.BNFC'Position (tokenLineCol $1)) (snd $2)) }
@@ -173,6 +175,12 @@ Expr6
   | {- empty -} { (AbsHint.BNFC'NoPosition, AbsHint.EEmpty AbsHint.BNFC'NoPosition) }
   | '(' Expr ')' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), (snd $2)) }
 
+Expr :: { (AbsHint.BNFC'Position, AbsHint.Expr) }
+Expr
+  : 'scan' { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.EInput (uncurry AbsHint.BNFC'Position (tokenLineCol $1))) }
+  | Expr1 '||' Expr { (fst $1, AbsHint.EOr (fst $1) (snd $1) (snd $3)) }
+  | Expr1 { (fst $1, (snd $1)) }
+
 Expr5 :: { (AbsHint.BNFC'Position, AbsHint.Expr) }
 Expr5
   : '-' Expr6 { (uncurry AbsHint.BNFC'Position (tokenLineCol $1), AbsHint.Neg (uncurry AbsHint.BNFC'Position (tokenLineCol $1)) (snd $2)) }
@@ -198,11 +206,6 @@ Expr1 :: { (AbsHint.BNFC'Position, AbsHint.Expr) }
 Expr1
   : Expr2 '&&' Expr1 { (fst $1, AbsHint.EAnd (fst $1) (snd $1) (snd $3)) }
   | Expr2 { (fst $1, (snd $1)) }
-
-Expr :: { (AbsHint.BNFC'Position, AbsHint.Expr) }
-Expr
-  : Expr1 '||' Expr { (fst $1, AbsHint.EOr (fst $1) (snd $1) (snd $3)) }
-  | Expr1 { (fst $1, (snd $1)) }
 
 ListExpr :: { (AbsHint.BNFC'Position, [AbsHint.Expr]) }
 ListExpr

@@ -223,7 +223,7 @@ eitherResIdent tv s = treeFind resWords
 -- | The keywords and symbols of the language organized as binary search tree.
 resWords :: BTree
 resWords =
-  b "[" 23
+  b "[]" 24
     (b "--" 12
        (b ")" 6
           (b "%" 3 (b "!=" 2 (b "!" 1 N N) N) (b "(" 5 (b "&&" 4 N N) N))
@@ -231,20 +231,21 @@ resWords =
        (b "=" 18
           (b ";" 15
              (b ":=" 14 (b "/" 13 N N) N) (b "<=" 17 (b "<" 16 N N) N))
-          (b ">=" 21 (b ">" 20 (b "==" 19 N N) N) (b "?" 22 N N))))
-    (b "printf" 35
-       (b "else" 29
-          (b "boolean" 26
-             (b "]" 25 (b "[]" 24 N N) N)
-             (b "continue" 28 (b "break" 27 N N) N))
-          (b "if" 32
-             (b "for" 31 (b "false" 30 N N) N)
-             (b "print" 34 (b "int" 33 N N) N)))
-       (b "void" 41
-          (b "to" 38
-             (b "string" 37 (b "return" 36 N N) N)
-             (b "tuple" 40 (b "true" 39 N N) N))
-          (b "||" 44 (b "{" 43 (b "while" 42 N N) N) (b "}" 45 N N))))
+          (b ">=" 21
+             (b ">" 20 (b "==" 19 N N) N) (b "[" 23 (b "?" 22 N N) N))))
+    (b "return" 36
+       (b "false" 30
+          (b "break" 27
+             (b "boolean" 26 (b "]" 25 N N) N)
+             (b "else" 29 (b "continue" 28 N N) N))
+          (b "int" 33
+             (b "if" 32 (b "for" 31 N N) N)
+             (b "printf" 35 (b "print" 34 N N) N)))
+       (b "void" 42
+          (b "to" 39
+             (b "string" 38 (b "scan" 37 N N) N)
+             (b "tuple" 41 (b "true" 40 N N) N))
+          (b "||" 45 (b "{" 44 (b "while" 43 N N) N) (b "}" 46 N N))))
   where
   b s n = B bs (TS bs n)
     where

@@ -39,6 +39,7 @@ data Stmt' a
     = Empty a
     | Decl a (Type' a) [Item' a]
     | Ass a Ident (Expr' a)
+    | ArrAss a Ident (Expr' a) (Expr' a)
     | Incr a Ident
     | Decr a Ident
     | Ret a (Expr' a)
@@ -81,6 +82,7 @@ data Expr' a
     | EApp a Ident [Expr' a]
     | EString a String
     | EEmpty a
+    | EInput a
     | Neg a (Expr' a)
     | Not a (Expr' a)
     | EMul a (Expr' a) (MulOp' a) (Expr' a)
@@ -141,6 +143,7 @@ instance HasPosition Stmt where
     Empty p -> p
     Decl p _ _ -> p
     Ass p _ _ -> p
+    ArrAss p _ _ _ -> p
     Incr p _ -> p
     Decr p _ -> p
     Ret p _ -> p
@@ -182,6 +185,7 @@ instance HasPosition Expr where
     EApp p _ _ -> p
     EString p _ -> p
     EEmpty p -> p
+    EInput p -> p
     Neg p _ -> p
     Not p _ -> p
     EMul p _ _ _ -> p

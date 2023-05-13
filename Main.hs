@@ -37,6 +37,7 @@ workWithFile inputFile vals = do
                     hPutStrLn stderr $ "Runtime Error: " ++ err
                     exitFailure
                 (Right _, store) -> do
+                    putStrLn (show store)       -- TODEL
                     return ()
 
 

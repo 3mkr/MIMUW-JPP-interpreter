@@ -32,15 +32,15 @@ The set of reserved words is the set of terminals appearing in the grammar. Thos
 The reserved words used in Hint are the following:
   | ``boolean`` | ``break`` | ``continue`` | ``else``
   | ``false`` | ``for`` | ``if`` | ``int``
-  | ``print`` | ``printf`` | ``return`` | ``string``
-  | ``to`` | ``true`` | ``tuple`` | ``void``
-  | ``while`` |  |  |
+  | ``print`` | ``printf`` | ``return`` | ``scan``
+  | ``string`` | ``to`` | ``true`` | ``tuple``
+  | ``void`` | ``while`` |  |
 
 The symbols used in Hint are the following:
   | ( | ) | , | {
-  | } | ; | = | ++
-  | -- | := | < | >
-  | [] | ? | [ | ]
+  | } | ; | = | [
+  | ] | ++ | -- | :=
+  | < | > | [] | ?
   | - | ! | && | ||
   | + | * | / | %
   | <= | >= | == | !=
@@ -68,6 +68,7 @@ All other symbols are terminals.
   | //Stmt// | -> | ``;``
   |  |  **|**  | //Type// //[Item]// ``;``
   |  |  **|**  | //Ident// ``=`` //Expr// ``;``
+  |  |  **|**  | //Ident// ``[`` //Expr// ``]`` ``=`` //Expr// ``;``
   |  |  **|**  | //Ident// ``++`` ``;``
   |  |  **|**  | //Ident// ``--`` ``;``
   |  |  **|**  | ``return`` //Expr// ``;``
@@ -105,6 +106,9 @@ All other symbols are terminals.
   |  |  **|**  | //String//
   |  |  **|**  | **eps**
   |  |  **|**  | ``(`` //Expr// ``)``
+  | //Expr// | -> | ``scan``
+  |  |  **|**  | //Expr1// ``||`` //Expr//
+  |  |  **|**  | //Expr1//
   | //Expr5// | -> | ``-`` //Expr6//
   |  |  **|**  | ``!`` //Expr6//
   |  |  **|**  | //Expr6//
@@ -116,8 +120,6 @@ All other symbols are terminals.
   |  |  **|**  | //Expr3//
   | //Expr1// | -> | //Expr2// ``&&`` //Expr1//
   |  |  **|**  | //Expr2//
-  | //Expr// | -> | //Expr1// ``||`` //Expr//
-  |  |  **|**  | //Expr1//
   | //[Expr]// | -> | **eps**
   |  |  **|**  | //Expr//
   |  |  **|**  | //Expr// ``,`` //[Expr]//
