@@ -28,11 +28,15 @@ runEvalControl prog env store vals = runStateT (runExceptT (runReaderT (runMain 
 -- Finding main() and running it
 runMain :: Program -> [String] -> EvalControl ()
 runMain (Program a topDefs) vals = do
-    let mainFunc = head $ filter isMain topDefs
-    (nEnv, nStore) <- saveFunToEnv (Program a topDefs)
-    put nStore
-    evalFunctionMain mainFunc nEnv vals
-    return ()
+    let findMain = filter isMain topDefs
+    if null findMain
+        then throwError noMainError
+        else do
+            let mainFunc = head $ findMain
+            (nEnv, nStore) <- saveFunToEnv (Program a topDefs)
+            put nStore
+            evalFunctionMain mainFunc nEnv vals
+            return ()
 
 evalFunctionMain :: TopDef -> Env -> [String] -> EvalControl()
 evalFunctionMain (FnDef _ _ _ args block) env vals = do
@@ -155,12 +159,14 @@ evalStmt (For _ x e1 e2 block) = do
 
 
 -- ++ and -- operators
-evalStmt (Incr _ (Ident x)) = do
-    changeVIntVar x (+) (1)
+evalStmt (Incr loc (Ident x)) = do
+    line <- extractLine loc
+    changeVIntVar x (+) (1) line
     return Nothing
 
-evalStmt (Decr _ (Ident x)) = do
-    changeVIntVar x (-) (1)
+evalStmt (Decr loc (Ident x)) = do
+    line <- extractLine loc
+    changeVIntVar x (-) (1) line
     return Nothing
 
 
@@ -184,27 +190,29 @@ evalStmt (Decl _ _ items) = do
     newEnv <- evalDeclare items
     return $ Just $ Environment newEnv
 
-evalStmt (Ass _ (Ident x) e) = do
+evalStmt (Ass loc (Ident x) e) = do
     env <- ask
     store <- get
     v <- evalExpr e
+    line <- extractLine loc
     case Map.lookup x env of
-        Nothing -> throwError $ unknownVarError  x
+        Nothing -> throwError $ unknownVarError x (show line)
         Just (addr, ro) -> do
             if ro == False
                 then do
                     put $ Map.insert addr v store
                     return Nothing
                 else
-                    throwError $ readOnlyVarError x
+                    throwError $ readOnlyVarError x (show line)
 
-evalStmt (ArrAss _ (Ident x) idx e) = do
+evalStmt (ArrAss loc (Ident x) idx e) = do
     env <- ask
     store <- get
     v <- evalExpr e
+    line <- extractLine loc
     VInt i <- evalExpr idx
     case Map.lookup x env of
-        Nothing -> throwError $ unknownVarError x
+        Nothing -> throwError $ unknownVarError x (show line)
         Just (addr, ro) -> do
             if ro == False
                 then do
@@ -215,18 +223,18 @@ evalStmt (ArrAss _ (Ident x) idx e) = do
                                 let newStore = Map.insert addr newVal store
                                 put newStore
                                 return Nothing
-                            Nothing -> throwError $ noValError x
-                            _ -> throwError $ wrongTypeError x "VArr"
+                            Nothing -> throwError $ noValError x (show line)
+                            _ -> throwError $ wrongTypeError x "VArr" (show line)
                 else
-                    throwError $ readOnlyVarError x
+                    throwError $ readOnlyVarError x (show line)
 
 
-changeVIntVar :: String -> (Int -> Int -> Int) -> Int -> EvalControl ()
-changeVIntVar x op change = do
+changeVIntVar :: String -> (Int -> Int -> Int) -> Int -> Int -> EvalControl ()
+changeVIntVar x op change line = do
     env <- ask
     store <- get
     case Map.lookup x env of
-        Nothing -> throwError $ unknownVarError  x
+        Nothing -> throwError $ unknownVarError x (show line)
         Just (addr, ro) -> do
             if ro == False
                 then do
@@ -236,10 +244,10 @@ changeVIntVar x op change = do
                             let newStore = Map.insert addr newVal store
                             put newStore
                             return ()
-                        Nothing -> throwError $ noValError x
-                        _ -> throwError $ wrongTypeError x "VInt"
+                        Nothing -> throwError $ noValError x (show line)
+                        _ -> throwError $ wrongTypeError x "VInt" (show line)
                 else
-                    throwError $ readOnlyVarError x
+                    throwError $ readOnlyVarError x (show line)
 
 
 runForLoop :: Ident -> HintValue -> HintValue -> Block -> EvalControl ()
@@ -295,11 +303,12 @@ evalSingleDeclare (Init _ (Ident x) e) = do
             put $ Map.insert newAddr v store
             return newEnv
 
-evalSingleDeclare (NoInit _ (Ident x)) = do
+evalSingleDeclare (NoInit loc (Ident x)) = do
     env <- ask
     store <- get
+    line <- extractLine loc
     case Map.lookup x env of    
-        Just addr -> throwError $ duplicateVarError ++ x
+        Just addr -> throwError $ duplicateVarError x (show line)
         Nothing -> do
             let newAddr = Map.size store
             let newEnv = Map.insert x (newAddr, False) env
@@ -320,16 +329,17 @@ evalExpr (EAdd _ e1 op e2) = do
     VInt v2 <- evalExpr e2
     return $ VInt (operationAdd op v1 v2)
 
-evalExpr (EMul _ e1 op e2) = do
+evalExpr (EMul loc e1 op e2) = do
     VInt v1 <- evalExpr e1
     VInt v2 <- evalExpr e2
+    line <- extractLine loc
     case op of
         Times _ -> return $ VInt (operationMul op v1 v2)
         Div _   -> if v2 == 0
-                    then throwError divByZeroError
+                    then throwError $ divByZeroError (show line)
                     else return $ VInt (operationMul op v1 v2)
         Mod _   -> if v2 == 0
-                    then throwError modZeroError
+                    then throwError $ modZeroError (show line)
                     else return $ VInt (operationMul op v1 v2)
 
 evalExpr (Neg _ e) = do
@@ -374,12 +384,13 @@ evalExpr (EArr _ es) = do
     v <- arrayCreator es
     return (VArr (v))
 
-evalExpr (EArrIdx _ eArr eIdx) = do
+evalExpr (EArrIdx loc eArr eIdx) = do
     (VArr arr) <- evalExpr eArr
     (VInt idx) <- evalExpr eIdx
+    line <- extractLine loc
     if idx >= 0 && idx < fromIntegral (length arr)
         then return $ arr !! fromIntegral idx
-        else throwError indexOutOfBounds
+        else throwError $ indexOutOfBounds (show line)
 
 evalExpr (ETuple _ es) = do
     v <- arrayCreator es
@@ -387,25 +398,27 @@ evalExpr (ETuple _ es) = do
     
 
 -- Variable expressions
-evalExpr (EVar _ (Ident x)) = do
+evalExpr (EVar loc (Ident x)) = do
     env <- ask
     store <- get
+    line <- extractLine loc
     case Map.lookup x env of
         Just (addr, _) -> case Map.lookup addr store of
             Just val -> return val
-            Nothing -> throwError $ noValError x
-        Nothing -> throwError $ unknownVarError x
+            Nothing -> throwError $ noValError x (show line)
+        Nothing -> throwError $ unknownVarError x (show line)
 
 
 -- EApp expression
-evalExpr (EApp _ (Ident x) es) = do
+evalExpr (EApp loc (Ident x) es) = do
     env <- ask
     store <- get
     vals <- arrayCreator es
+    line <- extractLine loc
     case Map.lookup x env of
-        Nothing -> throwError $ unknownVarError x
+        Nothing -> throwError $ unknownVarError x (show line)
         Just (addr, _) -> case Map.lookup addr store of
-            Nothing -> throwError $ noValError x
+            Nothing -> throwError $ noValError x (show line)
             Just (VFun args block) -> do
                 r <- evalFunction (VFun args block) env vals
                 case r of
@@ -434,3 +447,9 @@ arrayCreator (e : es) = do
     v1 <- evalExpr e
     vR <- arrayCreator es
     return $ v1 : vR
+
+
+extractLine :: Maybe (Int, Int) -> EvalControl Int
+extractLine lData = case lData of
+    Just (x, _) -> return x
+    Nothing -> throwError "Unknown location!"
