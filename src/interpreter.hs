@@ -93,11 +93,12 @@ evalStmt (Print _ e) = do
     liftIO $ putStrLn (show v)
     return Nothing
 
-evalStmt (Printf _ e1 e2 e3 msg) = do
+evalStmt (Printf loc e1 e2 e3 msg) = do
     (VArr v1) <- evalExpr e1
     (VArr v2) <- evalExpr e2
     (VArr v3) <- evalExpr e3
-    let fullMsg = createMsg msg v1 v2 v3 []
+    line <- extractLine loc
+    fullMsg <- createMsg line msg v1 v2 v3 []
     liftIO $ putStrLn (show fullMsg)
     return Nothing
 

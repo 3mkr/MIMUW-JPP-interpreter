@@ -16,12 +16,14 @@ import Types
 import Errors
 import UtilFunctions 
 
+
 -- Starting monads with proper parameters
 runTypeCheck :: Program -> [String] -> IO (Either RuntimeErr ())
 runTypeCheck prog vals = runTypeControl prog Map.empty vals
 
 runTypeControl :: Program -> EnvType -> [String] -> IO (Either RuntimeErr ())
 runTypeControl prog env vals = runExceptT (runReaderT (checkMain prog vals) env)
+
 
 -- Finding main() and typechecking it
 checkMain :: Program -> [String] -> TypeControl ()
@@ -31,23 +33,27 @@ checkMain (Program a topDefs) vals = do
         then throwError noMainError
         else do
             let mainFunc = head $ findMain
-            --(nEnv, nStore) <- saveFunToEnv (Program a topDefs)
-            checkFunctionMain mainFunc {-nEnv vals-}
+            nEnv <- saveFunTypesToEnv (Program a topDefs)
+            local (const nEnv) $ checkFunctionMain mainFunc {-nEnv vals-}
             return ()
 
 checkFunctionMain :: TopDef -> TypeControl()    {-EnvType -> [String] ->-}
 checkFunctionMain (FnDef _ _ _ args block) = do                         {-env vals-}
     let argNames    = map (\(Arg _ _ (Ident name)) -> name) args
     let argTypes    = (map (\x-> makeArgHint x) args)
-    checkFunction (TFun TVoid argTypes block) argNames                  {-env hintVals-}
+
+    checkFunction (TFun TVoid argNames argTypes block)                  {-env hintVals-}
     return ()
 
+
 -- Typechecking function definition
-checkFunction :: HintType -> [String] -> TypeControl (Maybe StmtType)  {--> Env -> [HintType]-}
-checkFunction (TFun retType args block) argNames = do                   {-env vals-}
-    let newEnv  = Map.fromList (zip argNames args) --`Map.union` env
+checkFunction :: HintType -> TypeControl (Maybe StmtType)  {--> Env -> [HintType]-}
+checkFunction (TFun retType names args block) = do                   {-env vals-}
+    env <- ask
+    let newEnv  = Map.fromList (zip names args) `Map.union` env
     result <- local (const newEnv) (checkBlock block)
     return result
+
 
 -- Typechecking block of statements
 checkBlock :: Block -> TypeControl (Maybe StmtType)
@@ -77,7 +83,20 @@ checkStmt (Print _ e) = do
     checkExpr e
     return Nothing
 
---checkStmt (Printf _ e1 e2 e3 msg) = do
+checkStmt (Printf loc e1 e2 e3 msg) = do
+    line <- extractLine loc
+    t1 <- checkExpr e1
+    t2 <- checkExpr e2
+    t3 <- checkExpr e3
+    if t1 /= TArr TInt && t1 /= TArr TEmpty
+        then throwError $ typesErr (show line) "TArr TInt" (show t1)
+        else do
+            if t2 /= TArr TString && t2 /= TArr TEmpty
+                then throwError $ typesErr (show line) "TArr TString" (show t2)
+                else do
+                    if t3 /= TArr TBool && t3 /= TArr TEmpty
+                        then throwError $ typesErr (show line) "TArr TBool" (show t3)
+                        else return Nothing
 
 
 -- If Statements
@@ -111,11 +130,11 @@ checkStmt (While loc e block) = do
             checkBlock block
             return Nothing
 
-checkStmt(BreakExp _) = do  -- TODO
-    return Nothing
+checkStmt(BreakExp _) = do
+    return $ Just TLoopBreak
 
-checkStmt(ContExp _) = do   -- TODO
-    return Nothing
+checkStmt(ContExp _) = do
+    return $ Just TLoopCont
 
 checkStmt (For loc (Ident x) e1 e2 block) = do
     env <- ask
@@ -140,13 +159,18 @@ checkStmt (Decr loc (Ident x)) = testIfInt loc x
 
 
 -- Return statements
---checkStmt (Ret _ e) = do  -- TODO
+checkStmt (Ret _ e) = do
+    t <- checkExpr e
+    return $ Just $ ReturnType t
 
---checkStmt (VRet _) = do   -- TODO
+checkStmt (VRet _) = do
+    return $ Just $ ReturnType TVoid
+
 
 -- Other Statements
 checkStmt (SExp _ e) = do
     checkExpr e >> return Nothing
+
 
 -- Reading input expression
 checkStmt (Input _ (Ident x)) = do
@@ -169,7 +193,22 @@ checkStmt (Ass loc (Ident x) e) = do
                 then return Nothing
                 else throwError $ typesErr (show line) (show oldType) (show t)
 
---checkStmt (ArrAss loc (Ident x) idx e) = do     -- TODO
+checkStmt (ArrAss loc (Ident x) idx e) = do
+    env <- ask
+    tArrV <- checkExpr e
+    tIdx <- checkExpr idx
+    line <- extractLine loc
+    if tIdx /= TInt
+        then throwError $ arrayIndexErr (show line)
+        else do
+            case Map.lookup x env of
+                Just (TArr arr) -> do
+                    if tArrV == arr
+                        then return Nothing
+                        else throwError $ typesErr (show line) (show arr) (show tArrV)
+                Nothing -> throwError $ noValError x (show line)
+                _ -> throwError $ wrongTypeError x "TArr" (show line)
+
 
 checkStmt _ = do
     return Nothing
@@ -199,7 +238,7 @@ checkSingleDeclare (Init _ (Ident x) e) expect loc = do
     env <- ask
     t <- checkExpr e
     line <- extractLine loc
-    if t == expect
+    if (t == expect) || (t == TArr TEmpty && (expect == TArr TInt || expect == TArr TString || expect == TArr TBool)) 
         then do
             let newEnv = Map.insert x t env
             return newEnv
@@ -232,6 +271,7 @@ checkExpr (Neg loc e) = do
     result <- check1Arg loc e TInt TInt
     return result
 
+
 -- Logical expressions
 checkExpr (ELitTrue _) = do
     return TBool
@@ -255,25 +295,35 @@ checkExpr(Not loc e) = do
     result <- check1Arg loc e TBool TBool
     return result
 
+
 -- String expression
 checkExpr (EString _ s) = do
     return TString
 
 
 -- Array & Tuple expressions
-{-
-checkExpr (EArr _ es) = do     -- TODO
-    v <- arrayCreator es
-    return (VArr (v))
+checkExpr (EArr loc es) = do
+    tList <- arrayCreator es
+    if null tList
+        then return (TArr (TEmpty))
+        else do
+            let t = head tList 
+            isGoodType <- isSingleType t tList
+            line <- extractLine loc
+            if isGoodType /= TProblem
+                then return (TArr (t))
+                else throwError $ multipleArrayTypes (show line)
 
-checkExpr (EArrIdx loc eArr eIdx) = do     -- TODO
-    (VArr arr) <- checkExpr eArr
-    (VInt idx) <- checkExpr eIdx
+checkExpr (EArrIdx loc eArr eIdx) = do
+    tArr <- checkExpr eArr
+    tIdx <- checkExpr eIdx
     line <- extractLine loc
-    if idx >= 0 && idx < fromIntegral (length arr)
-        then return $ arr !! fromIntegral idx
-        else throwError $ indexOutOfBounds (show line)
-
+    if tIdx /= TInt
+        then throwError $ arrayIndexErr (show line)
+        else do
+            case tArr of
+                (TArr vType) -> return vType
+{-
 checkExpr (ETuple _ es) = do
     v <- arrayCreator es
     return (VTuple (v))
@@ -288,7 +338,25 @@ checkExpr (EVar loc (Ident x)) = do
         Just varType -> return varType
 
 -- EApp expression
-checkExpr (EApp loc (Ident x) es) = do      -- TODO
+checkExpr (EApp loc (Ident x) es) = do
+    line <- extractLine loc
+    ts <- arrayCreator es
+    env <- ask
+    case Map.lookup x env of
+        Nothing -> throwError $ unknownVarError x (show line)
+        Just (TFun retType argNames argTypes block) -> do
+            areArgsCorrect <- compareArgs line ts argTypes
+            if areArgsCorrect == True
+                then do
+                    r <- checkFunction (TFun retType argNames argTypes block)
+                    case r of
+                        Just (ReturnType actualRetType) -> do
+                            if retType == actualRetType
+                                then return retType
+                                else throwError $ functionRetError (show line) (show retType) (show actualRetType)
+                        _ -> return TVoid
+                else throwError "Never thrown error"
+
 
 {-
 -- Empty expression
@@ -298,6 +366,16 @@ checkExpr (EEmpty _) = do
 
 checkExpr _ = do
     return TVoid
+
+compareArgs :: Int -> [HintType] -> [HintType] -> TypeControl Bool
+compareArgs _ [] [] = do
+    return True
+compareArgs line is [] = throwError $ functionArgsNoErr (show line)
+compareArgs line [] es = throwError $ functionArgsNoErr (show line)
+compareArgs line (i : is) (e : es) = do
+    if i == e
+        then compareArgs line is es
+        else throwError $ functionArgsErr (show line)
 
 
 check1Arg :: Maybe (Int, Int) -> Expr -> HintType -> HintType -> TypeControl HintType
@@ -319,7 +397,26 @@ check2Args loc e1 e2 expect1 expect2 result = do
             else throwError $ typesErr (show line) (show expect2) (show t2)
         else throwError $ typesErr (show line) (show expect1) (show t1)
 
+arrayCreator :: [Expr] -> TypeControl [HintType]
+arrayCreator [] = do
+    return []
+arrayCreator (e : []) = do
+    t1 <- checkExpr e
+    return $ [t1]
+arrayCreator (e : es) = do
+    t1 <- checkExpr e
+    tR <- arrayCreator es
+    return $ t1 : tR
+
+isSingleType :: HintType -> [HintType] -> TypeControl HintType
+isSingleType first [] = do
+    return first
+isSingleType first (t : ts) = do
+    if first == t
+        then isSingleType first ts
+        else return TProblem
+
 extractLine :: Maybe (Int, Int) -> TypeControl Int
 extractLine lData = case lData of
     Just (x, _) -> return x
-    Nothing -> throwError "Unknown location!"
+    Nothing -> throwError locationError

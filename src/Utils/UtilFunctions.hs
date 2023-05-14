@@ -5,6 +5,9 @@ import System.Exit          (exitFailure)
 import System.IO
 import Data.Char (isDigit)
 import Data.Array
+import Data.List
+
+import Control.Monad.Except
 
 import AbsHint
 import ErrM
@@ -12,6 +15,7 @@ import PrintHint
 import SkelHint
 
 import Types
+import Errors
 
 -- Main utils
 noInput :: IO()
@@ -62,12 +66,16 @@ valToHint s
     | s == "false" = VBool False
 
 
-createMsg :: String -> [HintValue] -> [HintValue] -> [HintValue] -> String -> String
-createMsg [] _ _ _ acc = reverse acc
-createMsg ('%' : 'd' : ms) (i : is) ss bs acc   = createMsg ms is ss bs ((reverse (show i)) ++ acc)
-createMsg ('%' : 's' : ms) is (s : ss) bs acc   = createMsg ms is ss bs ((reverse (show s)) ++ acc)
-createMsg ('%' : 'b' : ms) is ss (b : bs) acc   = createMsg ms is ss bs ((reverse (show b)) ++ acc)
-createMsg (m : ms) is ss bs acc                 = createMsg ms is ss bs (m : acc)
+createMsg :: Int -> String -> [HintValue] -> [HintValue] -> [HintValue] -> String -> EvalControl String
+createMsg line [] _ _ _ acc = do
+    return $ reverse acc
+createMsg line ('%' : 'd' : ms) (i : is) ss bs acc  = createMsg line ms is ss bs ((reverse (show i)) ++ acc)
+createMsg line ('%' : 'd' : ms) [] ss bs acc        = throwError $ printfArgumentsErr (show line) "VInt"
+createMsg line ('%' : 's' : ms) is (s : ss) bs acc  = createMsg line ms is ss bs ((reverse (show s)) ++ acc)
+createMsg line ('%' : 's' : ms) is [] bs acc        = throwError $ printfArgumentsErr (show line) "VSring"
+createMsg line ('%' : 'b' : ms) is ss (b : bs) acc  = createMsg line ms is ss bs ((reverse (show b)) ++ acc)
+createMsg line ('%' : 'b' : ms) is ss [] acc        = throwError $ printfArgumentsErr (show line) "VBool"
+createMsg line (m : ms) is ss bs acc                = createMsg line ms is ss bs (m : acc)
 
 modifyArrAtIdx :: [HintValue] -> Int -> HintValue -> [HintValue] -> [HintValue]
 modifyArrAtIdx (t : ts) 0 v as = modifyArrAtIdx ts (-1) v (v : as)
@@ -94,6 +102,26 @@ vIntAdd (VInt v) i = (VInt (v + i))
 
 
 -- TypeChecker utils
+tupleToTFun :: (HintType, [String], [HintType], Block) -> HintType
+tupleToTFun (z, q, x, y) = TFun z q x y
+
+saveFunTypesToEnv :: Program -> TypeControl EnvType
+saveFunTypesToEnv (Program _ topDefs) = do 
+    let allFunc  = filter (isNotMain) topDefs
+    let fNames   = map (\(FnDef _ _ (Ident name) _ _) -> name) allFunc
+    let fTypes   = map (\(FnDef _ fType _ _ _) -> makeTypeHint fType) allFunc
+    let fArgs    = map (map makeArgHint . (\(FnDef _ _ _ args _) -> args)) allFunc
+    let aNames   = map (map getIdents . (\(FnDef _ _ _ args _) -> args)) allFunc
+    --let aNames   = map (\(FnDef _ _ _ args _) -> getIdents args) functionList
+    let fBlocks  = map (\(FnDef _ _ _ _ block) -> block) allFunc
+
+    let fDef     = map tupleToTFun (zip4 fTypes aNames fArgs fBlocks)
+    let newEnv = Map.fromList (zip fNames fDef) 
+    return newEnv
+
+getIdents :: Arg -> String
+getIdents (Arg _ _ (Ident x)) = x
+
 makeArgHint :: Arg -> HintType
 makeArgHint (Arg _ (Int _) _)        =   TInt
 makeArgHint (Arg _ (Str _) _)        =   TString

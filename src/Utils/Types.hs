@@ -10,7 +10,6 @@ import AbsHint
 type RuntimeErr     =   String
 type TypeCheckErr   =   String
 type Name           =   String
-type Var            =   String
 type Address        =   Int
 type ReadOnly       =   Bool
 
@@ -22,8 +21,10 @@ data HintType
     | TVoid
     | TArr HintType
     | TTuple [HintType]
-    | TFun HintType [HintType] Block
+    | TFun HintType [Name] [HintType] Block
     | TScan
+    | TProblem
+    | TEmpty
     deriving (Eq, Ord, Show)
 
 -- Result of Stmt in TypeChecker

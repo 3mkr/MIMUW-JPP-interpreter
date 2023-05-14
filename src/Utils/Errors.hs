@@ -17,3 +17,13 @@ wrongTypeError x eType loc  = "Error in line " ++ loc ++ ": Variable " ++ x ++ "
 -- TypeChecker errors
 typesErr loc exp is         = "Error in line " ++ loc ++ ": Expected " ++ exp ++ " but got " ++ is
 varTypesErr loc exp is x    = "Error in line " ++ loc ++ ": Variable " ++ x ++ " is of type " ++ exp ++ " but was assigned " ++ is
+loopControlOutise op        = op ++ " used outside of loop"
+multipleArrayTypes loc      = "Error in line " ++ loc ++ ": Array has multiple types"
+arrayIndexErr loc           = "Error in line " ++ loc ++ ": Array index must be Integer"
+printfArgumentsErr loc typ  = "Error in line " ++ loc ++ ": Not enough arguments of type " ++ typ
+functionArgsErr loc         = "Error in line " ++ loc ++ ": Arguments mismatch"
+functionArgsNoErr loc       = "Error in line " ++ loc ++ ": Wrong number of arguments"
+functionRetError loc exp is = "Error in line " ++ loc ++ ": Function should return " ++ exp ++ " but returned " ++ is
+
+-- Other errors
+locationError               = "Unknown location!"
