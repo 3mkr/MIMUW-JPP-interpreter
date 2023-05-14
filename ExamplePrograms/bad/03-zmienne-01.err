@@ -1,0 +1,1 @@
+TypeCheck Error: Error in line 2: Variable x is of type TString but was assigned TInt

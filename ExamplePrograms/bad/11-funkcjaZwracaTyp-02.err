@@ -1,0 +1,1 @@
+TypeCheck Error: Error in line 11: Variable s is of type TBool but was assigned TString

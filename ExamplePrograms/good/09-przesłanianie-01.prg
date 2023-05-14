@@ -1,4 +1,4 @@
-int main() {
+void main() {
     int x = 10;
     print(x);                       // x == 10
     for (i := 0 to 0) {

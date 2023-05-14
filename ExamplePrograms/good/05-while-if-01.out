@@ -1,0 +1,5 @@
+VInt 1
+VInt 2
+VInt 4
+VString "x == 8"
+VInt 8
