@@ -41,6 +41,7 @@ runMain (Program a topDefs) vals = do
 evalFunctionMain :: TopDef -> Env -> [String] -> EvalControl()
 evalFunctionMain (FnDef _ _ _ args block) env vals = do
     let hintVals = convertToHint vals
+    liftIO $ putStrLn $ show hintVals
     evalFunction (VFun args block) env hintVals
     return ()
 
@@ -313,7 +314,7 @@ evalSingleDeclare (Init _ (Ident x) e) = do
         Just (addr, ro) -> do
             let newAddr = Map.size env
             let newEnv = Map.insert x (newAddr, False) env
-            put $ Map.insert newAddr v store       -- We already have variable with that name 
+            put $ Map.insert newAddr v store
             return newEnv
         Nothing -> do
             let newAddr = Map.size env
@@ -442,11 +443,6 @@ evalExpr (EApp loc (Ident x) es) = do
                 case r of
                     Just (ReturnVal result) -> return result
                     _ -> return VVoid
-
-
--- Empty expression
---evalExpr (EEmpty _) = do
---    return VVoid
 
 
 arrayCreator :: [Expr] -> EvalControl [HintValue]

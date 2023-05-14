@@ -52,7 +52,7 @@ isAllDigits :: String -> Bool
 isAllDigits s = all isDigit s
 
 convertToHint :: [String] -> [HintValue]
-convertToHint ss = convertHelp ss []
+convertToHint ss = reverse $ convertHelp ss []
 
 convertHelp :: [String] -> [HintValue] -> [HintValue]
 convertHelp [] acc = acc
@@ -138,6 +138,13 @@ makeTypeHint (Void _)        =   TVoid
 makeTypeHint (Tuple _ ts)    =    TTuple (map makeTypeHint ts)
 makeTypeHint (Array _ ts)    =    TArr (makeTypeHint ts)
 --makeTypeHint (Fun _ t ts)    =    TFun (makeTypeHint t) (map makeTypeHint ts)
+
+convertToHintType :: [String] -> [HintType]
+convertToHintType ss = reverse $ convertHelpType ss []
+
+convertHelpType :: [String] -> [HintType] -> [HintType]
+convertHelpType [] acc = acc
+convertHelpType (s : ss) acc = convertHelpType ss ((valToHintType s) : acc)
 
 valToHintType :: String -> HintType
 valToHintType s

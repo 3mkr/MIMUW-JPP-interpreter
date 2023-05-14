@@ -34,21 +34,25 @@ checkMain (Program a topDefs) vals = do
         else do
             let mainFunc = head $ findMain
             nEnv <- saveFunTypesToEnv (Program a topDefs)
-            local (const nEnv) $ checkFunctionMain mainFunc {-nEnv vals-}
+            local (const nEnv) $ checkFunctionMain mainFunc vals
             return ()
 
-checkFunctionMain :: TopDef -> TypeControl()    {-EnvType -> [String] ->-}
-checkFunctionMain (FnDef _ _ _ args block) = do                         {-env vals-}
+checkFunctionMain :: TopDef -> [String] -> TypeControl()
+checkFunctionMain (FnDef _ _ _ args block) vals = do
     let argNames    = map (\(Arg _ _ (Ident name)) -> name) args
-    let argTypes    = (map (\x-> makeArgHint x) args)
-
-    checkFunction (TFun TVoid argNames argTypes block)                  {-env hintVals-}
-    return ()
+    let argTypes    = map (\x-> makeArgHint x) args
+    let actualTypes = convertToHintType vals
+    areArgsCorrect <- compareArgs 1 actualTypes argTypes
+    if areArgsCorrect == True
+        then do
+            checkFunction (TFun TVoid argNames argTypes block)
+            return ()
+        else throwError $ functionArgsErr (show 1)
 
 
 -- Typechecking function definition
-checkFunction :: HintType -> TypeControl (Maybe StmtType)  {--> Env -> [HintType]-}
-checkFunction (TFun retType names args block) = do                   {-env vals-}
+checkFunction :: HintType -> TypeControl (Maybe StmtType)
+checkFunction (TFun retType names args block) = do
     env <- ask
     let newEnv  = Map.fromList (zip names args) `Map.union` env
     result <- local (const newEnv) (checkBlock block)
@@ -73,6 +77,7 @@ checkBlockOfStmts (s : ss) = do
         Just TLoopBreak                 -> checkBlockOfStmts ss
         Just (ReturnType t)             -> return $ Just $ ReturnType t
         Nothing                         -> checkBlockOfStmts ss
+
 
 -- Typechecking single statement
 checkStmt :: Stmt -> TypeControl (Maybe StmtType)
@@ -323,11 +328,7 @@ checkExpr (EArrIdx loc eArr eIdx) = do
         else do
             case tArr of
                 (TArr vType) -> return vType
-{-
-checkExpr (ETuple _ es) = do
-    v <- arrayCreator es
-    return (VTuple (v))
--}
+
 
 -- Variable expressions
 checkExpr (EVar loc (Ident x)) = do
@@ -356,13 +357,6 @@ checkExpr (EApp loc (Ident x) es) = do
                                 else throwError $ functionRetError (show line) (show retType) (show actualRetType)
                         _ -> return TVoid
                 else throwError "Never thrown error"
-
-
-{-
--- Empty expression
-checkExpr (EEmpty _) = do
-    return TVoid
--}
 
 checkExpr _ = do
     return TVoid

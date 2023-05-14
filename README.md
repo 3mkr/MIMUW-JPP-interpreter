@@ -8,9 +8,13 @@ Interpreter jest uruchamiany poleceniem
 
 PROGRAM to nazwa pliku, zawierającego program do interpretacji. Proghram posiada instrukcje obsługujące standardowe wejście i nie interpretuje programów w nim pisanych pisanych.
 
-Program posiada statyczny TypeChecker, który jest obecnie zrobiony w około 80%.
+Funkcja main() jest typu void.
 
 Bloki pętli, instrukcji warunkowej if oraz funkcji muszą być otoczone klamrami { } ze względu na czytelność.
+
+Puste tablice muszą zawierać spację pomiędzy nawiasami kwadratowymi.
+    int[] arr = [ ]     //Poprawna pusta tablica
+    int[] arr = []      //Niepoprawna pusta tablica
 
 Typy krotek są oznaczane za pomocą nawiasów ostrokątnych <>, a wartości za pomocą znaków zapytania ? ?, dla wizualnego odróżnienia od innych konstrukcji. Ponieważ nie zaimplementowałem pattern-matchingu na krotkach są one jedynie ciekawostką niezgłoszoną do oceny i nie są objęte typowaniem.
 
