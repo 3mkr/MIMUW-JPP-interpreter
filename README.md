@@ -61,4 +61,5 @@ Uwagi do oceny
 Testy
  * 07-argumentyWywołania-01
  * 07-inOut-02
+ 
 są zależne od inputu użytkownika, więc nie są częścią automatycznego testowania.
