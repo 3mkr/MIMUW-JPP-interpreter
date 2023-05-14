@@ -8,6 +8,9 @@ Interpreter jest uruchamiany poleceniem
 
 PROGRAM to nazwa pliku, zawierającego program do interpretacji. Proghram posiada instrukcje obsługujące standardowe wejście i nie interpretuje programów w nim pisanych pisanych.
 
+Aby wykonać testy, należy uruchomić skrypt test.sh. KOnieczne może być nadanie uprawnień do wykonywania:
+    chmod 700 test.sh
+
 Funkcja main() jest typu void.
 
 Bloki pętli, instrukcji warunkowej if oraz funkcji muszą być otoczone klamrami { } ze względu na czytelność.
@@ -61,5 +64,34 @@ Uwagi do oceny
 Testy
  * 07-argumentyWywołania-01
  * 07-inOut-02
- 
+
 są zależne od inputu użytkownika, więc nie są częścią automatycznego testowania.
+
+Tabela cech
+-----------
+  Na 15 punktów
+  + 01 (trzy typy)
+  + 02 (literały, arytmetyka, porównania)
+  + 03 (zmienne, przypisanie)
+  + 04 (print)
+  + 05 (while, if)
+  + 06 (funkcje lub procedury, rekurencja)
+  ? 07 (przez zmienną / przez wartość / in/out)
+  + 08 (zmienne read-only i pętla for)
+  Na 20 punktów
+  + 09 (przesłanianie i statyczne wiązanie)
+  + 10 (obsługa błędów wykonania)
+  + 11 (funkcje zwracające wartość)
+  Na 30 punktów
+  + 12 (4) (statyczne typowanie)
+    13 (2) (funkcje zagnieżdżone ze statycznym wiązaniem)
+  + 14 (1) (rekordy/listy/tablice/tablice wielowymiarowe)
+    15 (2) (krotki z przypisaniem)
+  + 16 (1) (break, continue)
+    17 (4) (funkcje wyższego rzędu, anonimowe, domknięcia)
+    18 (3) (generatory)
+  Dodatkowe
+  + 19 (2) (printf)
+
+Razem: 28 / 30
+
