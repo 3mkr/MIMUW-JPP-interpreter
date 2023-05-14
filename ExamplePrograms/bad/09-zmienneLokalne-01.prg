@@ -1,4 +1,4 @@
-int main() {
+void main() {
     for (i := 0 to 10) {
         print(i);           // Will print VInt 0 to 10
     }

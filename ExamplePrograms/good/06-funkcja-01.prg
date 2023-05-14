@@ -3,7 +3,7 @@ int incBy10 (int x) {
     return x;
 }
 
-int main() {
+void main() {
     int x = 9;
     printf([x], [ ], [ ], "x equals: %d");                  // "x equals: 9"
     int y = incBy10(x);
