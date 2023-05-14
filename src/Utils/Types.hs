@@ -42,7 +42,7 @@ data HintValue
     deriving (Eq, Ord, Show)
 
 -- Result of Stmt in Interpreter
-data StmtOutput = Environment Env | ReturnVal HintValue | LoopCont | LoopBreak
+data StmtOutput = Environment Env | ReturnVal HintValue | LoopCont | LoopBreak deriving Show
 
 -- Typechecker Environment
 type EnvType = Map.Map Name HintType

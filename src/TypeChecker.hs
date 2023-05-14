@@ -111,8 +111,8 @@ checkStmt (Cond loc e block) = do
     if t /= TBool
         then throwError $ typesErr (show line) "TBool" (show t)
         else do
-            checkBlock block
-            return Nothing
+            result <- checkBlock block
+            return result
 
 checkStmt (CondElse loc e blockT blockF) = do
     t <- checkExpr e
@@ -120,9 +120,11 @@ checkStmt (CondElse loc e blockT blockF) = do
     if t /= TBool
         then throwError $ typesErr (show line) "TBool" (show t)
         else do
-            checkBlock blockT
-            checkBlock blockF
-            return Nothing
+            Just (ReturnType r1) <- checkBlock blockT
+            Just (ReturnType r2) <- checkBlock blockF
+            if r1 == r2
+                then return $ Just $ ReturnType r1
+                else throwError $ mulitpleReturnTypesErr (show line)
 
 
 -- Loop Statements

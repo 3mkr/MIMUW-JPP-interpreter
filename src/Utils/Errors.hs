@@ -24,6 +24,7 @@ printfArgumentsErr loc typ  = "Error in line " ++ loc ++ ": Not enough arguments
 functionArgsErr loc         = "Error in line " ++ loc ++ ": Arguments mismatch"
 functionArgsNoErr loc       = "Error in line " ++ loc ++ ": Wrong number of arguments"
 functionRetError loc exp is = "Error in line " ++ loc ++ ": Function should return " ++ exp ++ " but returned " ++ is
+mulitpleReturnTypesErr loc  = "Error in line " ++ loc ++ ": Multiple return types"
 
 -- Other errors
 locationError               = "Unknown location!"

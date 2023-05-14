@@ -66,10 +66,10 @@ evalBlock :: Block -> EvalControl (Maybe StmtOutput)
 evalBlock (Block _ stmts) = do
     result <- evalBlockOfStmts stmts
     case result of
-        Nothing             -> return Nothing
         Just LoopCont       -> return $ Just LoopCont
         Just LoopBreak      -> return $ Just LoopBreak
         Just (ReturnVal v)  -> return $ Just $ ReturnVal v
+        Nothing             -> return Nothing
 
 evalBlockOfStmts :: [Stmt] -> EvalControl (Maybe StmtOutput)
 evalBlockOfStmts [] = return Nothing
@@ -111,7 +111,8 @@ evalStmt (Cond _ e block) = do
             result <- evalBlock block
             case result of
                 Just LoopCont  -> return $ Just LoopCont
-                Just LoopBreak -> return $ Just LoopBreak 
+                Just LoopBreak -> return $ Just LoopBreak
+                Just (ReturnVal v) -> return $ Just $ ReturnVal v
                 _ -> return Nothing
         else return Nothing
 
@@ -123,14 +124,15 @@ evalStmt (CondElse _ e blockT blockF) = do
             case result of
                 Just LoopCont  -> return $ Just LoopCont
                 Just LoopBreak -> return $ Just LoopBreak
+                Just (ReturnVal v) -> return $ Just $ ReturnVal v
                 _ -> return Nothing
         else do
             result <- evalBlock blockF
             case result of
                 Just LoopCont  -> return $ Just LoopCont
                 Just LoopBreak -> return $ Just LoopBreak
+                Just (ReturnVal v) -> return $ Just $ ReturnVal v
                 _ -> return Nothing
-    return Nothing
 
 
 -- Loop Statements
