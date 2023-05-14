@@ -41,7 +41,6 @@ runMain (Program a topDefs) vals = do
 evalFunctionMain :: TopDef -> Env -> [String] -> EvalControl()
 evalFunctionMain (FnDef _ _ _ args block) env vals = do
     let hintVals = convertToHint vals
-    liftIO $ putStrLn $ show hintVals
     evalFunction (VFun args block) env hintVals
     return ()
 
